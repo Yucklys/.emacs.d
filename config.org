@@ -38,7 +38,12 @@
   - [[#smart-input-source][Smart Input Source]]
   - [[#quail-dvorak-layout][Quail Dvorak layout]]
 - [[#shell][Shell]]
+  - [[#eshell][eshell]]
+  - [[#vterm][vterm]]
 - [[#lsp][LSP]]
+  - [[#eglot][eglot]]
+  - [[#lsp-mode][lsp-mode]]
+  - [[#lsp-bridge][lsp-bridge]]
 - [[#enhancement][Enhancement]]
   - [[#which-key][Which-key]]
   - [[#ace-window][ace-window]]
@@ -70,6 +75,8 @@
   - [[#nushell][Nushell]]
   - [[#dafny][Dafny]]
   - [[#just][Just]]
+  - [[#haskell][Haskell]]
+  - [[#lua][Lua]]
 - [[#environment][Environment]]
 - [[#tools][Tools]]
   - [[#pdf][PDF]]
@@ -1012,7 +1019,7 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
        '("t" . meow-right)
        '("T" . meow-right-expand)
        '("u" . meow-undo)
-       '("U" . meow-undo-in-selection)
+       '("U" . undo-redo)
        '("v" . meow-visit)
        '("w" . meow-next-word)
        '("W" . meow-next-symbol)
@@ -1108,7 +1115,12 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 ;;   (quail-set-keyboard-layout "dvorak"))
 #+end_src
 * Shell
-#+begin_src emacs-lisp
+** eshell
+#+begin_src emacs-lisp :tangle yes
+
+#+end_src
+** vterm
+#+begin_src emacs-lisp :tangle no
   (use-package vterm
     :straight t
     :bind
@@ -1148,7 +1160,8 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     )
 #+end_src
 * LSP
-#+begin_src emacs-lisp
+** eglot
+#+begin_src emacs-lisp :tangle no
   (use-package eglot
     :disabled t
     :init
@@ -1194,7 +1207,9 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;;   :after eglot
   ;;   :config
   ;;   (eglot-x-setup))
-
+#+end_src
+** lsp-mode
+#+begin_src emacs-lisp :tangle no
   ;; (use-package lsp-mode
   ;;   :straight t
   ;;   :commands (lsp lsp-deferred)
@@ -1290,18 +1305,19 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;; 	([remap xref-find-apropos] . 'consult-lsp-symbols)
   ;; 	)
   ;;   )
-
+#+end_src
+** lsp-bridge
+#+begin_src emacs-lisp :tangle yes
   (use-package lsp-bridge
     :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
   			 :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
   			 :build (:not compile))
     :init
-    (global-lsp-bridge-mode))
+    (global-lsp-bridge-mode)
+    :config
+    (setq acm-enable-copilot t
+  	acm-enable-preview t))
 #+end_src
-
-#+RESULTS:
-: consult-lsp-symbols
-
 * Enhancement
 ** Which-key
 #+begin_src emacs-lisp
@@ -2116,6 +2132,15 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   (use-package just-mode
     :straight t
     :mode ("\\justfile\\'" . just-mode))
+#+end_src
+** Haskell
+#+begin_src emacs-lisp :tangle yes
+  (use-package haskell-mode :straight t)
+#+end_src
+** Lua
+#+begin_src emacs-lisp :tangle yes
+  (add-to-list 'auto-mode-alist
+  	     '("\\.lua$" . lua-ts-mode))
 #+end_src
 * Environment
 #+begin_src emacs-lisp
