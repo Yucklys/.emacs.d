@@ -20,6 +20,9 @@
   - [[#embark][Embark]]
   - [[#tempel][Tempel]]
   - [[#yasnippet][YASnippet]]
+- [[#search][Search]]
+  - [[#isearch][Isearch]]
+  - [[#occur-buffer][Occur buffer]]
 - [[#helper-functions][Helper functions]]
   - [[#consult][Consult]]
   - [[#dash][Dash]]
@@ -59,9 +62,12 @@
   - [[#icons][Icons]]
   - [[#page-break-lines][Page break lines]]
   - [[#rainbow-delimiters][Rainbow delimiters]]
-  - [[#customizations][Customizations]]
   - [[#line-numbers][Line numbers]]
+  - [[#pulsar][Pulsar]]
   - [[#font][Font]]
+  - [[#emoji][Emoji]]
+  - [[#breadcrumb][Breadcrumb]]
+  - [[#spacious-padding][Spacious padding]]
 - [[#language][Language]]
   - [[#tree-sitter][Tree-sitter]]
   - [[#markdown][Markdown]]
@@ -83,16 +89,11 @@
   - [[#rss][RSS]]
   - [[#web][Web]]
   - [[#anki][Anki]]
+  - [[#gpt][GPT]]
 
 * Early init
 Some early init code to run before everything started.
 #+begin_src emacs-lisp :tangle ./early-init.el
-  ;; Reduce number of gc at startup
-  (add-hook 'emacs-startup-hook
-    (lambda ()
-      (setq gc-cons-threshold 16777216 ; 16mb
-            gc-cons-percentage 0.1)))
-
   ;; in ~/.emacs.d/init.el (or ~/.emacs.d/early-init.el in Emacs 27)
   (setq package-enable-at-startup nil ; don't auto-initialize!
         ;; don't add that `custom-set-variables' block to my init.el!
@@ -111,8 +112,57 @@ Some early init code to run before everything started.
   ;; Integration of straight.el and flycheck.
   (setq straight-fix-flycheck t)
 
-  ;; Disable native-comp warning buffer.
-  (setq native-comp-async-report-warnings-errors nil)
+  ;; UI Customization
+  (setq frame-resize-pixelwise t
+        frame-inhibit-implied-resize t
+        frame-title-format '("%b")
+        ring-bell-function 'ignore
+        use-dialog-box t ; only for mouse events, which I seldom use
+        use-file-dialog nil
+        use-short-answers t
+        inhibit-splash-screen t
+        inhibit-startup-screen t
+        inhibit-x-resources t
+        inhibit-startup-echo-area-message user-login-name ; read the docstring
+        inhibit-startup-buffer-menu t)
+
+  (scroll-bar-mode -1)
+  (tool-bar-mode -1)
+  (tooltip-mode -1)
+  (menu-bar-mode -1)
+  (blink-cursor-mode -1)
+  ;; nice scrolling
+  (setq scroll-margin 0
+        scroll-conservatively 100000
+        scroll-preserve-screen-position 1)
+  (size-indication-mode t) ; show size on mode line
+
+  ;; Temporarily increase the garbage collection threshold.  These
+  ;; changes help shave off about half a second of startup time.  The
+  ;; `most-positive-fixnum' is DANGEROUS AS A PERMANENT VALUE.  See the
+  ;; `emacs-startup-hook' a few lines below for what I actually use.
+  (setq gc-cons-threshold most-positive-fixnum
+        gc-cons-percentage 0.5)
+
+  ;; Same idea as above for the `file-name-handler-alist' and the
+  ;; `vc-handled-backends' with regard to startup speed optimisation.
+  ;; Here I am storing the default value with the intent of restoring it
+  ;; via the `emacs-startup-hook'.
+  (defvar sin-emacs--file-name-handler-alist file-name-handler-alist)
+  (defvar sin-emacs--vc-handled-backends vc-handled-backends)
+
+  (setq file-name-handler-alist nil
+        vc-handled-backends nil)
+
+  (add-hook 'emacs-startup-hook
+            (lambda ()
+              (setq gc-cons-threshold (* 1024 1024 20)
+                    gc-cons-percentage 0.2
+                    file-name-handler-alist sin-emacs--file-name-handler-alist
+                    vc-handled-backends sin-emacs--vc-handled-backends)))
+
+  ;; name the default frame as "home"
+  (add-hook 'after-init-hook (lambda () (set-frame-name "home")))
 #+end_src
 * Package Setup
 ** Straight & use-package
@@ -169,6 +219,17 @@ Use straight and use-package to manage packages. These two packages should be lo
 #+end_src
 ** Emacs
 #+begin_src emacs-lisp
+  ;; Make native compilation silent and prune its cache.
+  (when (native-comp-available-p)
+    (setq native-comp-async-report-warnings-errors 'silent) ; Emacs 28 with native compilation
+    (setq native-compile-prune-cache t)) ; Emacs 29
+
+  ;; Disable the damn thing by making it disposable.
+  (setq custom-file (make-temp-file "emacs-custom-"))
+
+  ;; Do not remind me of unsafe themes
+  (setq custom-safe-themes t)
+
   (use-package emacs
     :bind
     ("C-c f p" . my/find-file-in-private-config)
@@ -221,6 +282,8 @@ Use straight and use-package to manage packages. These two packages should be lo
 
     ;; Disable backup-files
     (setq make-backup-files nil)
+    (setq backup-inhibited nil)
+    (setq create-lockfiles nil)
     )
 #+end_src
 ** Magit
@@ -248,16 +311,17 @@ Corfu enhances in-buffer completion with a small completion popup. It hooks to ~
 #+begin_src emacs-lisp
   (use-package corfu
     :straight t
-    :disabled t
     :custom
     (corfu-cycle t)
     (corfu-quit-no-match 'separator)
-    (corfu-preselect 'prompt)
+    (corfu-preselect 'valid)
     (corfu-auto nil)
     (corfu-auto-delay 0.3)
     (corfu-auto-prefix 0)
 
     :hook
+    (minibuffer-setup . corfu-enable-in-minibuffer)
+    (eshell-mode . corfu-enable-in-shell)
     (meow-insert-exit . corfu-quit)
     
     :bind
@@ -272,16 +336,46 @@ Corfu enhances in-buffer completion with a small completion popup. It hooks to ~
     (global-corfu-mode)
 
     :config
+    ;; enable corfu in M-: or M-!
+    (defun corfu-enable-in-minibuffer ()
+      "Enable Corfu in the minibuffer."
+      (when (local-variable-p 'completion-at-point-functions)
+        ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
+        (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
+                    corfu-popupinfo-delay nil)
+        (corfu-mode 1)))
+
+    (defun corfu-enable-in-shell ()
+      "Corfu in shell similar to normal shell completion behavior."
+      (setq-local corfu-auto nil)
+      (corfu-mode))
+
     ;; Config for tab-and-go style
-    ;; (dolist (c (list (cons "SPC" " ")
-    ;;                (cons "," ",")
-    ;;                (cons ")" ")")
-    ;;                (cons "}" "}")
-    ;;                (cons "]" "]")))
-    ;; (define-key corfu-map (kbd (car c)) `(lambda ()
-    ;;                                        (interactive)
-    ;;                                        (corfu-insert)
-    ;;                                        (insert ,(cdr c)))))
+    (dolist (c (list (cons "SPC" " ")
+                     (cons "," ",")
+                     (cons ")" ")")
+                     (cons "}" "}")
+                     (cons "]" "]")))
+      (define-key corfu-map (kbd (car c)) `(lambda ()
+                                             (interactive)
+                                             (corfu-insert)
+                                             (insert ,(cdr c)))))
+
+    ;; Emacs 28: Hide commands in M-x which do not apply to the current mode.
+    ;; Corfu commands are hidden, since they are not supposed to be used via M-x.
+    (setq read-extended-command-predicate
+          #'command-completion-default-include-p)
+
+    ;; ignore casing
+    (setq completion-ignore-case t)
+    (setq read-buffer-completion-ignore-case t)
+    (setq read-file-name-completion-ignore-case t)
+    (setq-default case-fold-search t)
+
+    ;; Sort by input history
+    (with-eval-after-load 'savehist
+      (corfu-history-mode 1)
+      (add-to-list 'savehist-additional-variables 'corfu-history))
     )
 
   ;; Use corfu even in ternimal
@@ -300,28 +394,11 @@ Corfu enhances in-buffer completion with a small completion popup. It hooks to ~
 *** Icons before candidates
 Show icons before corfu candidates. Icons are from svg-lib, and the ~kind-icon-default-style~ depends on what font you are using for candidates.
 #+begin_src emacs-lisp
-  (use-package svg-lib :straight t)
-  (use-package kind-icon
+  (use-package nerd-icons-corfu
     :straight t
     :after corfu
-    :custom
-    (kind-icon-default-face 'corfu-default)
-    (kind-icon-default-style
-     '(:padding -1 :stroke 0 :margin 0 :radius 0 :height 0.5 :scale 1.0))
-    (kind-icon-blend-background nil)
-    :config
-    ;; Enable blend background in GUI
-    (when (display-graphic-p)
-      (setq kind-icon-blend-background t))
-
-    (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter)
-    ;; :config
-    ;; (add-hook 'corfu-mode-hook
-    ;;           (lambda ()
-    ;;             (setq completion-in-region-function
-    ;;                   (kind-icon-enhance-completion
-    ;;                    completion-in-region-function))))
-    )
+    :init
+    (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
 #+end_src
 *** Completion At Point Extensions (CAPE)
 Cape provides Completion At Point Extensions which can be used in combination with Corfu, Company or the default completion UI. The completion backends used by ~completion-at-point~ are so called ~completion-at-point-functions~ (Capfs).
@@ -362,6 +439,15 @@ Cape provides Completion At Point Extensions which can be used in combination wi
     ;;(add-to-list 'completion-at-point-functions #'cape-dict)
     ;;(add-to-list 'completion-at-point-functions #'cape-symbol)
     ;;(add-to-list 'completion-at-point-functions #'cape-line)
+    :config
+    ;; The advices are only needed on Emacs 28 and older.
+    (when (< emacs-major-version 29)
+      ;; Silence the pcomplete capf, no errors or messages!
+      (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent)
+
+      ;; Ensure that pcomplete does not write to the buffer
+      ;; and behaves as a pure `completion-at-point-function'.
+      (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-purify))
     )
 #+end_src
 ** Vertico
@@ -371,6 +457,20 @@ Vertico provides a performant and minimalistic vertical completion UI based on t
     :straight t
     :init
     (vertico-mode))
+
+  ;; enable recursive minibuffer
+  ;; it allows me to execute another command (`M-:') if I forgot to run it
+  ;; before the entering command (`M-x').
+  (setq enable-recursive-minibuffers t)
+  (setq read-minibuffer-restore-windows nil) ; Emacs 28
+  (minibuffer-depth-indicate-mode 1)
+
+  (setq minibuffer-default-prompt-format " [%s]") ; Emacs 29
+  (minibuffer-electric-default-mode 1)
+
+  ;; keep previous part of ~/.emacs.d/config.org/~/Project.
+  ;; this is useful combined with partial-completion style
+  (file-name-shadow-mode 1)
 #+end_src
 ** Orderless
 #+begin_src emacs-lisp
@@ -391,8 +491,15 @@ Vertico provides a performant and minimalistic vertical completion UI based on t
     ;;       orderless-component-separator #'orderless-escapable-split-on-space)
     (setq completion-styles '(orderless basic)
           completion-category-defaults nil
-          completion-category-overrides '((file (styles . (partial-completion)))
-  					(symbol (styles . (orderless-fast)))))
+          completion-category-overrides
+  	'((file (styles . (basic partial-completion orderless)))
+            (bookmark (styles . (basic substring)))
+            (library (styles . (basic substring)))
+            (embark-keybinding (styles . (basic substring)))
+            (imenu (styles . (basic substring orderless)))
+            (consult-location (styles . (basic substring orderless)))
+            (kill-ring (styles . (emacs22 orderless)))
+            (eglot (styles . (emacs22 substring orderless)))))
     )
 
   ;; Support Pinyin with pinyinlib
@@ -476,67 +583,100 @@ Marginalia provide additional infos about commands. It integrate with vertico an
 ** Tempel
 Tiny template package alternative to ~yasnippet~. It is light-weight and use the syntax of the Emacs Tempo library.
 #+begin_src emacs-lisp
-  ;; (use-package tempel
-  ;;   :straight t
-  ;;   ;; Require trigger prefix before template name when completing.
-  ;;   ;; :custom
-  ;;   ;; (tempel-trigger-prefix "<")
+  (use-package tempel
+    :straight t
+    ;; Require trigger prefix before template name when completing.
+    :custom
+    (tempel-trigger-prefix "<")
 
-  ;;   :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
-  ;;          ("M-*" . tempel-insert)
-  ;;          ("M-]" . tempel-next)
-  ;;          ("M-[" . tempel-prev))
+    :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
+           ("M-*" . tempel-insert)
+           ("M-]" . tempel-next)
+           ("M-[" . tempel-prev))
 
-  ;;   :init
+    :init
 
-  ;;   ;; Setup completion at point
-  ;;   (defun tempel-setup-capf ()
-  ;;     ;; Add the Tempel Capf to `completion-at-point-functions'.
-  ;;     ;; `tempel-expand' only triggers on exact matches. Alternatively use
-  ;;     ;; `tempel-complete' if you want to see all matches, but then you
-  ;;     ;; should also configure `tempel-trigger-prefix', such that Tempel
-  ;;     ;; does not trigger too often when you don't expect it. NOTE: We add
-  ;;     ;; `tempel-expand' *before* the main programming mode Capf, such
-  ;;     ;; that it will be tried first.
-  ;;     (setq-local completion-at-point-functions
-  ;;                 (cons #'tempel-expand
-  ;;                       completion-at-point-functions)))
+    ;; Setup completion at point
+    (defun tempel-setup-capf ()
+      ;; Add the Tempel Capf to `completion-at-point-functions'.
+      ;; `tempel-expand' only triggers on exact matches. Alternatively use
+      ;; `tempel-complete' if you want to see all matches, but then you
+      ;; should also configure `tempel-trigger-prefix', such that Tempel
+      ;; does not trigger too often when you don't expect it. NOTE: We add
+      ;; `tempel-expand' *before* the main programming mode Capf, such
+      ;; that it will be tried first.
+      (setq-local completion-at-point-functions
+                  (cons #'tempel-complete
+                        completion-at-point-functions)))
 
-  ;;   (add-hook 'conf-mode-hook 'tempel-setup-capf)
-  ;;   (add-hook 'prog-mode-hook 'tempel-setup-capf)
-  ;;   (add-hook 'text-mode-hook 'tempel-setup-capf)
+    (add-hook 'conf-mode-hook 'tempel-setup-capf)
+    (add-hook 'prog-mode-hook 'tempel-setup-capf)
+    (add-hook 'text-mode-hook 'tempel-setup-capf)
 
-  ;;   ;; Optionally make the Tempel templates available to Abbrev,
-  ;;   ;; either locally or globally. `expand-abbrev' is bound to C-x '.
-  ;;   ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
-  ;;   ;; (global-tempel-abbrev-mode)
-  ;;   )
+    ;; Optionally make the Tempel templates available to Abbrev,
+    ;; either locally or globally. `expand-abbrev' is bound to C-x '.
+    ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
+    (global-tempel-abbrev-mode)
+    )
 
-  ;; ;; Optional: Add tempel-collection.
-  ;; ;; The package is young and doesn't have comprehensive coverage.
-  ;; (use-package tempel-collection
-  ;;   :straight t
-  ;;   :after tempel)
+  ;; Optional: Add tempel-collection.
+  ;; The package is young and doesn't have comprehensive coverage.
+  (use-package tempel-collection
+    :straight t
+    :after tempel)
 
-  ;; ;; Integrate with eglot/lsp-mode.
-  ;; (use-package lsp-snippet-tempel
-  ;;   :straight (lsp-snippet-tempel :type git
-  ;;                                 :host github
-  ;;                                 :repo "svaante/lsp-snippet")
-  ;;   :config
-  ;;   ;; Initialize lsp-snippet -> tempel in eglot
-  ;;   ;; (lsp-snippet-tempel-eglot-init)
-  ;;   (lsp-snippet-tempel-lsp-mode-init))
+  ;; Integrate with eglot/lsp-mode.
+  (use-package lsp-snippet-tempel
+    :straight (lsp-snippet-tempel :type git
+                                  :host github
+                                  :repo "svaante/lsp-snippet")
+    :config
+    ;; Initialize lsp-snippet -> tempel in eglot
+    (lsp-snippet-tempel-eglot-init)
+    ;; (lsp-snippet-tempel-lsp-mode-init)
+    )
 #+end_src
 ** YASnippet
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle no
   (use-package yasnippet
     :straight t
+    :disabled t
     :config
     (yas-global-mode 1))
 
   (use-package yasnippet-snippets
-    :straight t)
+    :straight t
+    :after yasnippet)
+#+end_src
+* Search
+** Isearch
+#+begin_src emacs-lisp
+  (use-package isearch
+    :defer t
+    :bind
+    (:map isearch-mode-map
+  	("M-/" . 'isearch-complete))
+    :config
+    ;; use SPC to combine two seaorch regexp instead of one.*two,
+    ;; similar to orderless
+    (setq search-whitespace-regexp ".*?" ; one `setq' here to make it obvious they are a bundle
+          isearch-lax-whitespace t
+          isearch-regexp-lax-whitespace nil)
+    
+    (setq search-highlight t)
+    (setq isearch-lazy-highlight t)
+    (setq lazy-highlight-initial-delay 0.5)
+    (setq lazy-highlight-no-delay-length 4)
+
+    ;; add a total count for search (like 5/20)
+    (setq isearch-lazy-count t)
+    (setq lazy-count-prefix-format "(%s/%s) ")
+    (setq lazy-count-suffix-format nil))
+#+end_src
+** Occur buffer
+#+begin_src emacs-lisp
+  (setq list-matching-lines-jump-to-current-line nil) ; do not jump to current line in `*occur*' buffers
+  (add-hook 'occur-mode-hook #'hl-line-mode)
 #+end_src
 * Helper functions
 ** Consult
@@ -701,7 +841,10 @@ Save mini-buffer history. Vertico sorts by history position.
   (use-package savehist
     :defer t
     :custom
-    (history-length 25)
+    (history-length 100)
+    (history-delete-duplicates t)
+    (savhehist-shaveh-minibuffer-history t)
+    (savehist-additional-variables '(register-alist kill-ring))
     :init
     (savehist-mode 1))
 #+end_src
@@ -819,6 +962,7 @@ Save recent opened file histoy. The default save file is configured by ~no-litte
     (setq centaur-tabs-style "bar")
     (setq centaur-tabs-height 32)
     (setq centaur-tabs-set-icons t)
+    (setq centaur-tabs-icon-type 'nerd-icons)
     (setq centaur-tabs-set-bar 'under)
     (setq x-underline-at-descent-line t)
     (setq centaur-tabs-set-close-button nil)
@@ -1039,6 +1183,40 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
   (use-package electric-pair
     :hook
     (prog-mode . electric-pair-mode))
+
+  ;; Puni for customizable soft deletion methods
+  (use-package puni
+    :straight t
+    :defer t
+    :hook
+    (term-mode . puni-disable-puni-mode)
+    :init
+    (puni-global-mode)
+    :bind (("C-c e (" . 'puni-wrap-round)
+  	 ("C-c e )" . 'puni-wrap-round)
+  	 ("C-c e [" . 'puni-wrap-square)
+  	 ("C-c e ]" . 'puni-wrap-square)
+  	 ("C-h" . 'puni-force-delete))
+    :config
+    (defun puni-kill-line ()
+      "Kill a line forward while keeping expressions balanced."
+      (interactive)
+      (puni-soft-delete-by-move
+       ;; FUNC: `puni-soft-delete-by-move` softly deletes the region from
+       ;; cursor to the position after calling FUNC.
+       (lambda ()
+         (if (eolp) (forward-char) (end-of-line)))
+       ;; STRICT-SEXP: More on this later.
+       'strict-sexp
+       ;; STYLE: More on this later.
+       'within
+       ;; KILL: Save deleted region to kill-ring if non-nil.
+       'kill
+       ;; FAIL-ACTION argument is not used here.
+       'delete-one
+       ))
+    (setq puni-confirm-when-delete-unbalanced-active-region nil)
+    )
 #+end_src
 ** Undo-Redo
 #+begin_src emacs-lisp
@@ -1067,9 +1245,9 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
     :custom
     (default-input-method "rime")
     ;; Custom lib path for NixOS
-    (rime-emacs-module-header-root "/nix/store/69lyyz0x32dr9b4p2z9mpnip6jvagjcp-emacs-pgtk-with-packages-29.0.92/share/emacs/29.0.92/src/")
-    (rime-librime-root "/nix/store/aa4vlkqd652vggn4gh23gd7aq3khk4v7-librime-1.8.5/")
-    (rime-share-data-dir "~/.local/share/fcitx5/rime/")
+    (rime-share-data-dir "/usr/share/rime-data")
+    :hook
+    (post-self-insert . yu/rime-switch-layout)
     :config
     (defun rime-predicate-meow-mode-p ()
       "Detect whether the current buffer is in `meow' state.
@@ -1094,9 +1272,23 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
     (setq rime-inline-predicates
           '(rime-predicate-space-after-cc-p))
     (setq rime-inline-ascii-trigger 'shift-l)
-    (setq rime-show-candidate 'minibuffer)
+    (setq rime-show-candidate 'posframe)
     (define-key rime-mode-map (kbd "M-i") 'rime-force-enable))
-#+end_src
+
+  (defun yu/rime-switch-qwerty ()
+    (shell-command "im-select.exe 2052"))
+
+  (defun yu/rime-switch-dvorak ()
+    (shell-command "im-select.exe locale"))
+
+  (defun yu/rime-switch-layout ()
+    " Auto switch system keyboard layout for wsl.
+  I use this to switch to Dvorak keymap in inline-ascii mode."
+    (if rime-mode
+        (if (eq (rime--should-inline-ascii-p) nil)
+  	  (yu/rime-switch-qwerty)
+  	(yu/rime-switch-dvorak))))
+        #+END_src
 ** Smart Input Source
 Another workaround of using IM inside Emacs. SIS add predicates and switches for system IM so that you can switch to ascii input when switch to mini-buffer, normal mode, etc.. However, enabling ~sis-global-respect-mode~ will cause extreme lag, so I had to comment this package.
 ** Quail Dvorak layout
@@ -1116,8 +1308,10 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 #+end_src
 * Shell
 ** eshell
-#+begin_src emacs-lisp :tangle yes
-
+#+begin_src emacs-lisp
+  ;; Use pcomplete to generate shell completion
+  (use-package pcmpl-args
+    :straight t)
 #+end_src
 ** vterm
 #+begin_src emacs-lisp :tangle no
@@ -1161,9 +1355,8 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 #+end_src
 * LSP
 ** eglot
-#+begin_src emacs-lisp :tangle no
+#+begin_src emacs-lisp
   (use-package eglot
-    :disabled t
     :init
     (setq eglot-sync-connect 1
   	eglot-connect-timeout 10
@@ -1200,13 +1393,12 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :config
     (global-flycheck-eglot-mode 1))
 
-
-  ;; (use-package eglot-x
-  ;;   :straight (eglot-x :type git :host github
-  ;; 		     :repo "nemethf/eglot-x")
-  ;;   :after eglot
-  ;;   :config
-  ;;   (eglot-x-setup))
+  (use-package eglot-x
+    :straight (eglot-x :type git :host github
+  		     :repo "nemethf/eglot-x")
+    :after eglot
+    :config
+    (eglot-x-setup))
 #+end_src
 ** lsp-mode
 #+begin_src emacs-lisp :tangle no
@@ -1307,16 +1499,17 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;;   )
 #+end_src
 ** lsp-bridge
-#+begin_src emacs-lisp :tangle yes
+#+begin_src emacs-lisp
   (use-package lsp-bridge
     :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
   			 :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
   			 :build (:not compile))
+    :disabled t
     :init
     (global-lsp-bridge-mode)
     :config
     (setq acm-enable-copilot t
-  	acm-enable-preview t))
+  	acm-enable-preview nil))
 #+end_src
 * Enhancement
 ** Which-key
@@ -1379,6 +1572,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;; Better project management
   (use-package projectile
     :straight t
+    :disabled t
     :custom
     (projectile-sort-order 'recently-active)
     (projectile-project-search-path '("~/Projects/"))
@@ -1547,10 +1741,12 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :straight t
     :init (doom-modeline-mode 1)
     :custom
+    (doom-modeline-support-imenu t)
     (doom-modeline-hud t) ; Disable graphical modeline
     (doom-modeline-modal t) ; Show INSERT/NORMAL for modal editor
     (doom-modeline-modal-icon t) ; Show icons for modal editor
     (doom-modeline-height 32) ; Set the height of modeline
+    (doom-modeline-icon t)
     ;; (doom-modeline-display-default-persp-name t)
     )
 #+end_src
@@ -1559,12 +1755,18 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   (use-package dashboard
     :straight t
     :custom
-    (dashboard-startup-banner '1)
+    (dashboard-startup-banner '2)
     (dashboard-projects-backend 'projectile) ; Get projects from projectile
     ;; (dashboard-page-separator "\n\f\n")      ; Use page-break-lines
     (dashboard-center-content t)             ; Put content right
     (dashboard-agenda-release-buffers t)
+    (dashboard-icon-type 'nerd-icons)
+    (dashboard-set-heading-icons nil)
+    (dashboard-set-file-icons nil)
     :config
+    (dashboard-modify-heading-icons '((recents . "nf-oct-history")
+  				    (projects . "nf-oct-rocket")
+  				    (bookmarks . "nf-oct-bookmark")))
     (add-to-list 'dashboard-items '(projects . 5) t)
     (dashboard-setup-startup-hook)
     (setq initial-buffer-choice
@@ -1641,52 +1843,63 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :defer t
     :hook (prog-mode . rainbow-delimiters-mode))
 #+end_src
-** Customizations
-#+begin_src emacs-lisp
-  ;; UI Customization
-  (scroll-bar-mode -1)
-  (tool-bar-mode -1)
-  (tooltip-mode -1)
-  (menu-bar-mode -1)
-  (blink-cursor-mode -1)
-  ;; nice scrolling
-  (setq scroll-margin 0
-        scroll-conservatively 100000
-        scroll-preserve-screen-position 1)
-  (column-number-mode t) ; enable column number
-  (size-indication-mode t) ; show size on mode line
-#+end_src
 ** Line numbers
 #+begin_src emacs-lisp
-    (use-package display-line-numbers
-      :hook
-      ((prog-mode text-mode conf-mode) . display-line-numbers-mode)
-      :config
-      (defcustom display-line-numbers-exempt-modes
-        '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
-                     treemacs-mode dashboard-mode org-mode which-key-mode
-  		   vterm-mode)
-        "Major modes on which to disable line numbers."
-        :group 'display-line-numbers
-        :type 'list
-        :version "green")
+  (use-package display-line-numbers
+    :defer t
+    :config
+    (defcustom display-line-numbers-exempt-modes
+      '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
+                   treemacs-mode dashboard-mode org-mode which-key-mode
+  		 vterm-mode org-mode occur-mode)
+      "Major modes on which to disable line numbers."
+      :group 'display-line-numbers
+      :type 'list
+      :version "green")
 
-      (defun display-line-numbers--turn-on ()
-        "Turn on line numbers except for certain major modes.
-    Exempt major modes are defined in `display-line-numbers-exempt-modes'."
-        (unless (or (minibufferp)
-                    (member major-mode display-line-numbers-exempt-modes))
-          (display-line-numbers-mode)))
+    (defun display-line-numbers--turn-on ()
+      "Turn on line numbers except for certain major modes.
+  Exempt major modes are defined in `display-line-numbers-exempt-modes'."
+      (unless (or (minibufferp)
+                  (member major-mode display-line-numbers-exempt-modes))
+        (display-line-numbers-mode)))
 
-      (setq display-line-numbers 't) ; Relative or Absolute
-      ;; (global-hl-line-mode) ; Highlight current line
-      )
+    (global-display-line-numbers-mode)
+    ; (global-hl-line-mode) ; Highlight current line
+    )
+#+end_src
+** Pulsar
+#+begin_src emacs-lisp
+  (use-package pulsar
+    :straight t
+    :defer t
+    :custom
+    (puls-pulse t)
+    (pulsar-delay 0.055)
+    (pulsar-iterations 10)
+    (pulsar-face 'pulsar-magenta)
+    (pulsar-highlight-face 'pulsar-yellow)
+    :init
+    (pulsar-global-mode 1)
+    :hook
+    (next-error . 'pulsar-pulse-line)
+
+    ;; integration with the `consult' package
+    (consult-after-jump . 'pulsar-recenter-top)
+    (consult-after-jump . 'pulsar-reveal-entry)
+    
+    ;; integration with the built-in `imenu'
+    (imenu-after-jump . 'pulsar-recenter-top)
+    (imenu-after-jump . 'pulsar-reveal-entry)
+    :config
+    (add-to-list 'pulsar-pulse-functions 'ace-window)
+    (add-to-list 'pulsar-pulse-functions 'meow-search))
 #+end_src
 ** Font
 #+begin_src emacs-lisp
   ;; Set up font
   (add-to-list 'default-frame-alist
-               '(font . "MonoLisa-11"))
+               '(font . "MonoLisa-14"))
 
   (use-package cnfonts
     :straight t
@@ -1735,6 +1948,43 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     
     (global-ligature-mode t)
     )
+#+end_src
+** Emoji
+#+begin_src emacs-lisp
+  (use-package emojify
+    :straight t
+    :hook (after-init . global-emojify-mode))
+#+end_src
+** Breadcrumb
+#+begin_src emacs-lisp
+  (use-package breadcrumb
+    :straight t
+    :defer t
+    :custom
+    (breadcrumb-project-max-length 0.5)
+    (breadcrumb-project-crumb-separator "/")
+    (breadcrumb-imenu-max-length 1.0)
+    (breadcrumb-imenu-crumb-separator " > ")
+    :init
+    (breadcrumb-mode 1))
+#+end_src
+** Spacious padding
+#+begin_src emacs-lisp
+  (use-package spacious-padding
+    :straight t
+    :defer t
+    :init
+    (spacious-padding-mode 1)
+    :bind
+    ([f8] . 'spacious-padding-mode)
+    :config
+    (setq spacious-padding-widths
+          '( :internal-border-width 15
+             :header-line-width 4
+             :mode-line-width 6
+             :tab-width 4
+             :right-divider-width 30
+             :scroll-bar-width 8)))
 #+end_src
 * Language
 ** Tree-sitter
@@ -1801,16 +2051,14 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     (org-level-2 ((t (:height 1.3))))
     (org-level-3 ((t (:height 1.15))))
     :hook
-    (org-mode . org-indent-mode)
     (org-mode . (lambda ()
                   (toggle-truncate-lines nil)))
     :custom
     ;; Org files
-    (org-directory "~/OneDrive/org/") ; Note directory
+    (org-directory "~/org/") ; Note directory
     (org-default-notes-file (concat org-directory "inbox.org")) ; Default entry point
 
     ;; Useful settings
-    (org-hide-leading-stars t)
     (org-startup-folded (quote overview)) ; Fold all by default
     (org-hide-emphasis-markers t) ; Hide emphasis markers
     (org-log-done 'time) ; Log time when finish a job
@@ -1831,22 +2079,38 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     (org-image-actual-width '(400))
     (org-reveal-root "https://revealjs.com"))
 #+end_src
-*** Org modern
+*** Org appearance
 #+begin_src emacs-lisp
+  (use-package svg-lib :straight t)
   (use-package org-modern
     :straight t
     :hook
     (org-mode . org-modern-mode)
     (org-agenda-finalize . org-modern-agenda)
     :config
-    (setq org-agenda-tags-column 0
-  	org-agenda-block-separator ?─
-  	org-agenda-time-grid
-  	'((daily today require-timed)
-  	  (800 1000 1200 1400 1600 1800 2000)
-  	  " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
-  	org-agenda-current-time-string
-  	"⭠ now ─────────────────────────────────────────────────"))
+    (setq
+     ;; Edit settings
+     org-auto-align-tags nil
+     org-tags-column 0
+     org-catch-invisible-edits 'show-and-error
+     org-special-ctrl-a/e t
+     org-insert-heading-respect-content t
+
+     ;; Org styling, hide markup etc.
+     org-hide-emphasis-markers t
+     org-pretty-entities t
+     org-ellipsis "…"
+
+     ;; Agenda styling
+     org-agenda-tags-column 0
+     org-agenda-block-separator ?─
+     org-agenda-time-grid
+     '((daily today require-timed)
+       (800 1000 1200 1400 1600 1800 2000)
+       " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+     org-agenda-current-time-string
+     "◀── now ─────────────────────────────────────────────────")
+    )
 #+end_src
 *** Org capture
 #+begin_src emacs-lisp
@@ -1877,7 +2141,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
      ("C-c n d t" . 'org-roam-dailies-find-today)
      ("C-c n d j" . 'org-roam-dailies-find-date))
     :custom
-    (org-roam-directory "~/OneDrive/org/roam")
+    (org-roam-directory "~/org/roam")
     (org-roam-dailies-directory "50 Journals")
     :config
     ;; Roam buffer now act as a side window
@@ -2031,6 +2295,15 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   (use-package org-roam-protocol
     :after org-roam)
 #+end_src
+*** Denote
+#+begin_src emacs-lisp
+  (use-package denote
+    :straight t
+    :defer t
+    :config
+    (setq denote-directory (file-name-concat org-directory "denote/"))
+    )
+#+end_src
 *** Org appear
 #+begin_src emacs-lisp
   (use-package org-appear
@@ -2148,6 +2421,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;; I am using devenv to manage project environment
   (use-package envrc
     :straight t
+    :disabled t
     :hook
     (after-init . envrc-global-mode)
     )
@@ -2189,4 +2463,16 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   (use-package anki-editor
     :defer t
     :straight (:fork "orgtre"))
+#+end_src
+** GPT
+#+begin_src emacs-lisp
+  (use-package gptel
+    :straight t
+    :config
+    (setq gptel-api-key "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")
+    (gptel-make-ollama
+     "Ollama"
+     :host "localhost:11434"
+     :models '("zephyr:latest")
+     :stream t))
 #+end_src

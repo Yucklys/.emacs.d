@@ -41,6 +41,17 @@
      (convert-standard-filename
       (expand-file-name  "var/eln-cache/" user-emacs-directory)))))
 
+;; Make native compilation silent and prune its cache.
+(when (native-comp-available-p)
+  (setq native-comp-async-report-warnings-errors 'silent) ; Emacs 28 with native compilation
+  (setq native-compile-prune-cache t)) ; Emacs 29
+
+;; Disable the damn thing by making it disposable.
+(setq custom-file (make-temp-file "emacs-custom-"))
+
+;; Do not remind me of unsafe themes
+(setq custom-safe-themes t)
+
 (use-package emacs
   :bind
   ("C-c f p" . my/find-file-in-private-config)
@@ -93,6 +104,8 @@
 
   ;; Disable backup-files
   (setq make-backup-files nil)
+  (setq backup-inhibited nil)
+  (setq create-lockfiles nil)
   )
 
 (use-package magit
@@ -114,16 +127,17 @@
 
 (use-package corfu
   :straight t
-  :disabled t
   :custom
   (corfu-cycle t)
   (corfu-quit-no-match 'separator)
-  (corfu-preselect 'prompt)
+  (corfu-preselect 'valid)
   (corfu-auto nil)
   (corfu-auto-delay 0.3)
   (corfu-auto-prefix 0)
 
   :hook
+  (minibuffer-setup . corfu-enable-in-minibuffer)
+  (eshell-mode . corfu-enable-in-shell)
   (meow-insert-exit . corfu-quit)
 
   :bind
@@ -138,16 +152,46 @@
   (global-corfu-mode)
 
   :config
+  ;; enable corfu in M-: or M-!
+  (defun corfu-enable-in-minibuffer ()
+    "Enable Corfu in the minibuffer."
+    (when (local-variable-p 'completion-at-point-functions)
+      ;; (setq-local corfu-auto nil) ;; Enable/disable auto completion
+      (setq-local corfu-echo-delay nil ;; Disable automatic echo and popup
+                  corfu-popupinfo-delay nil)
+      (corfu-mode 1)))
+
+  (defun corfu-enable-in-shell ()
+    "Corfu in shell similar to normal shell completion behavior."
+    (setq-local corfu-auto nil)
+    (corfu-mode))
+
   ;; Config for tab-and-go style
-  ;; (dolist (c (list (cons "SPC" " ")
-  ;;                (cons "," ",")
-  ;;                (cons ")" ")")
-  ;;                (cons "}" "}")
-  ;;                (cons "]" "]")))
-  ;; (define-key corfu-map (kbd (car c)) `(lambda ()
-  ;;                                        (interactive)
-  ;;                                        (corfu-insert)
-  ;;                                        (insert ,(cdr c)))))
+  (dolist (c (list (cons "SPC" " ")
+                   (cons "," ",")
+                   (cons ")" ")")
+                   (cons "}" "}")
+                   (cons "]" "]")))
+    (define-key corfu-map (kbd (car c)) `(lambda ()
+                                           (interactive)
+                                           (corfu-insert)
+                                           (insert ,(cdr c)))))
+
+  ;; Emacs 28: Hide commands in M-x which do not apply to the current mode.
+  ;; Corfu commands are hidden, since they are not supposed to be used via M-x.
+  (setq read-extended-command-predicate
+        #'command-completion-default-include-p)
+
+  ;; ignore casing
+  (setq completion-ignore-case t)
+  (setq read-buffer-completion-ignore-case t)
+  (setq read-file-name-completion-ignore-case t)
+  (setq-default case-fold-search t)
+
+  ;; Sort by input history
+  (with-eval-after-load 'savehist
+    (corfu-history-mode 1)
+    (add-to-list 'savehist-additional-variables 'corfu-history))
   )
 
 ;; Use corfu even in ternimal
@@ -163,28 +207,11 @@
   :load-path "straight/build/corfu/extensions/"
   :hook (corfu-mode . corfu-popupinfo-mode))
 
-(use-package svg-lib :straight t)
-(use-package kind-icon
+(use-package nerd-icons-corfu
   :straight t
   :after corfu
-  :custom
-  (kind-icon-default-face 'corfu-default)
-  (kind-icon-default-style
-   '(:padding -1 :stroke 0 :margin 0 :radius 0 :height 0.5 :scale 1.0))
-  (kind-icon-blend-background nil)
-  :config
-  ;; Enable blend background in GUI
-  (when (display-graphic-p)
-    (setq kind-icon-blend-background t))
-
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter)
-  ;; :config
-  ;; (add-hook 'corfu-mode-hook
-  ;;           (lambda ()
-  ;;             (setq completion-in-region-function
-  ;;                   (kind-icon-enhance-completion
-  ;;                    completion-in-region-function))))
-  )
+  :init
+  (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter))
 
 ;; Add extensions
 (use-package cape
@@ -222,12 +249,35 @@
   ;;(add-to-list 'completion-at-point-functions #'cape-dict)
   ;;(add-to-list 'completion-at-point-functions #'cape-symbol)
   ;;(add-to-list 'completion-at-point-functions #'cape-line)
+  :config
+  ;; The advices are only needed on Emacs 28 and older.
+  (when (< emacs-major-version 29)
+    ;; Silence the pcomplete capf, no errors or messages!
+    (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-silent)
+
+    ;; Ensure that pcomplete does not write to the buffer
+    ;; and behaves as a pure `completion-at-point-function'.
+    (advice-add 'pcomplete-completions-at-point :around #'cape-wrap-purify))
   )
 
 (use-package vertico
   :straight t
   :init
   (vertico-mode))
+
+;; enable recursive minibuffer
+;; it allows me to execute another command (`M-:') if I forgot to run it
+;; before the entering command (`M-x').
+(setq enable-recursive-minibuffers t)
+(setq read-minibuffer-restore-windows nil) ; Emacs 28
+(minibuffer-depth-indicate-mode 1)
+
+(setq minibuffer-default-prompt-format " [%s]") ; Emacs 29
+(minibuffer-electric-default-mode 1)
+
+;; keep previous part of ~/.emacs.d/config.org/~/Project.
+;; this is useful combined with partial-completion style
+(file-name-shadow-mode 1)
 
 ;; Optionally use the `orderless' completion style.
 (use-package orderless
@@ -246,8 +296,15 @@
   ;;       orderless-component-separator #'orderless-escapable-split-on-space)
   (setq completion-styles '(orderless basic)
         completion-category-defaults nil
-        completion-category-overrides '((file (styles . (partial-completion)))
-  				      (symbol (styles . (orderless-fast)))))
+        completion-category-overrides
+      '((file (styles . (basic partial-completion orderless)))
+          (bookmark (styles . (basic substring)))
+          (library (styles . (basic substring)))
+          (embark-keybinding (styles . (basic substring)))
+          (imenu (styles . (basic substring orderless)))
+          (consult-location (styles . (basic substring orderless)))
+          (kill-ring (styles . (emacs22 orderless)))
+          (eglot (styles . (emacs22 substring orderless)))))
   )
 
 ;; Support Pinyin with pinyinlib
@@ -323,65 +380,83 @@
                  nil
                  (window-parameters (mode-line-format . none)))))
 
-;; (use-package tempel
-;;   :straight t
-;;   ;; Require trigger prefix before template name when completing.
-;;   ;; :custom
-;;   ;; (tempel-trigger-prefix "<")
-
-;;   :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
-;;          ("M-*" . tempel-insert)
-;;          ("M-]" . tempel-next)
-;;          ("M-[" . tempel-prev))
-
-;;   :init
-
-;;   ;; Setup completion at point
-;;   (defun tempel-setup-capf ()
-;;     ;; Add the Tempel Capf to `completion-at-point-functions'.
-;;     ;; `tempel-expand' only triggers on exact matches. Alternatively use
-;;     ;; `tempel-complete' if you want to see all matches, but then you
-;;     ;; should also configure `tempel-trigger-prefix', such that Tempel
-;;     ;; does not trigger too often when you don't expect it. NOTE: We add
-;;     ;; `tempel-expand' *before* the main programming mode Capf, such
-;;     ;; that it will be tried first.
-;;     (setq-local completion-at-point-functions
-;;                 (cons #'tempel-expand
-;;                       completion-at-point-functions)))
-
-;;   (add-hook 'conf-mode-hook 'tempel-setup-capf)
-;;   (add-hook 'prog-mode-hook 'tempel-setup-capf)
-;;   (add-hook 'text-mode-hook 'tempel-setup-capf)
-
-;;   ;; Optionally make the Tempel templates available to Abbrev,
-;;   ;; either locally or globally. `expand-abbrev' is bound to C-x '.
-;;   ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
-;;   ;; (global-tempel-abbrev-mode)
-;;   )
-
-;; ;; Optional: Add tempel-collection.
-;; ;; The package is young and doesn't have comprehensive coverage.
-;; (use-package tempel-collection
-;;   :straight t
-;;   :after tempel)
-
-;; ;; Integrate with eglot/lsp-mode.
-;; (use-package lsp-snippet-tempel
-;;   :straight (lsp-snippet-tempel :type git
-;;                                 :host github
-;;                                 :repo "svaante/lsp-snippet")
-;;   :config
-;;   ;; Initialize lsp-snippet -> tempel in eglot
-;;   ;; (lsp-snippet-tempel-eglot-init)
-;;   (lsp-snippet-tempel-lsp-mode-init))
-
-(use-package yasnippet
+(use-package tempel
   :straight t
-  :config
-  (yas-global-mode 1))
+  ;; Require trigger prefix before template name when completing.
+  :custom
+  (tempel-trigger-prefix "<")
 
-(use-package yasnippet-snippets
-  :straight t)
+  :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
+         ("M-*" . tempel-insert)
+         ("M-]" . tempel-next)
+         ("M-[" . tempel-prev))
+
+  :init
+
+  ;; Setup completion at point
+  (defun tempel-setup-capf ()
+    ;; Add the Tempel Capf to `completion-at-point-functions'.
+    ;; `tempel-expand' only triggers on exact matches. Alternatively use
+    ;; `tempel-complete' if you want to see all matches, but then you
+    ;; should also configure `tempel-trigger-prefix', such that Tempel
+    ;; does not trigger too often when you don't expect it. NOTE: We add
+    ;; `tempel-expand' *before* the main programming mode Capf, such
+    ;; that it will be tried first.
+    (setq-local completion-at-point-functions
+                (cons #'tempel-complete
+                      completion-at-point-functions)))
+
+  (add-hook 'conf-mode-hook 'tempel-setup-capf)
+  (add-hook 'prog-mode-hook 'tempel-setup-capf)
+  (add-hook 'text-mode-hook 'tempel-setup-capf)
+
+  ;; Optionally make the Tempel templates available to Abbrev,
+  ;; either locally or globally. `expand-abbrev' is bound to C-x '.
+  ;; (add-hook 'prog-mode-hook #'tempel-abbrev-mode)
+  (global-tempel-abbrev-mode)
+  )
+
+;; Optional: Add tempel-collection.
+;; The package is young and doesn't have comprehensive coverage.
+(use-package tempel-collection
+  :straight t
+  :after tempel)
+
+;; Integrate with eglot/lsp-mode.
+(use-package lsp-snippet-tempel
+  :straight (lsp-snippet-tempel :type git
+                                :host github
+                                :repo "svaante/lsp-snippet")
+  :config
+  ;; Initialize lsp-snippet -> tempel in eglot
+  (lsp-snippet-tempel-eglot-init)
+  ;; (lsp-snippet-tempel-lsp-mode-init)
+  )
+
+(use-package isearch
+  :defer t
+  :bind
+  (:map isearch-mode-map
+      ("M-/" . 'isearch-complete))
+  :config
+  ;; use SPC to combine two seaorch regexp instead of one.*two,
+  ;; similar to orderless
+  (setq search-whitespace-regexp ".*?" ; one `setq' here to make it obvious they are a bundle
+        isearch-lax-whitespace t
+        isearch-regexp-lax-whitespace nil)
+
+  (setq search-highlight t)
+  (setq isearch-lazy-highlight t)
+  (setq lazy-highlight-initial-delay 0.5)
+  (setq lazy-highlight-no-delay-length 4)
+
+  ;; add a total count for search (like 5/20)
+  (setq isearch-lazy-count t)
+  (setq lazy-count-prefix-format "(%s/%s) ")
+  (setq lazy-count-suffix-format nil))
+
+(setq list-matching-lines-jump-to-current-line nil) ; do not jump to current line in `*occur*' buffers
+(add-hook 'occur-mode-hook #'hl-line-mode)
 
 (use-package consult
   :straight t
@@ -534,7 +609,10 @@
 (use-package savehist
   :defer t
   :custom
-  (history-length 25)
+  (history-length 100)
+  (history-delete-duplicates t)
+  (savhehist-shaveh-minibuffer-history t)
+  (savehist-additional-variables '(register-alist kill-ring))
   :init
   (savehist-mode 1))
 
@@ -647,6 +725,7 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   (setq centaur-tabs-style "bar")
   (setq centaur-tabs-height 32)
   (setq centaur-tabs-set-icons t)
+  (setq centaur-tabs-icon-type 'nerd-icons)
   (setq centaur-tabs-set-bar 'under)
   (setq x-underline-at-descent-line t)
   (setq centaur-tabs-set-close-button nil)
@@ -855,6 +934,40 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   :hook
   (prog-mode . electric-pair-mode))
 
+;; Puni for customizable soft deletion methods
+(use-package puni
+  :straight t
+  :defer t
+  :hook
+  (term-mode . puni-disable-puni-mode)
+  :init
+  (puni-global-mode)
+  :bind (("C-c e (" . 'puni-wrap-round)
+       ("C-c e )" . 'puni-wrap-round)
+       ("C-c e [" . 'puni-wrap-square)
+       ("C-c e ]" . 'puni-wrap-square)
+       ("C-h" . 'puni-force-delete))
+  :config
+  (defun puni-kill-line ()
+    "Kill a line forward while keeping expressions balanced."
+    (interactive)
+    (puni-soft-delete-by-move
+     ;; FUNC: `puni-soft-delete-by-move` softly deletes the region from
+     ;; cursor to the position after calling FUNC.
+     (lambda ()
+       (if (eolp) (forward-char) (end-of-line)))
+     ;; STRICT-SEXP: More on this later.
+     'strict-sexp
+     ;; STYLE: More on this later.
+     'within
+     ;; KILL: Save deleted region to kill-ring if non-nil.
+     'kill
+     ;; FAIL-ACTION argument is not used here.
+     'delete-one
+     ))
+  (setq puni-confirm-when-delete-unbalanced-active-region nil)
+  )
+
 (use-package undo-fu
   :straight t
   :config
@@ -878,9 +991,9 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   :custom
   (default-input-method "rime")
   ;; Custom lib path for NixOS
-  (rime-emacs-module-header-root "/nix/store/69lyyz0x32dr9b4p2z9mpnip6jvagjcp-emacs-pgtk-with-packages-29.0.92/share/emacs/29.0.92/src/")
-  (rime-librime-root "/nix/store/aa4vlkqd652vggn4gh23gd7aq3khk4v7-librime-1.8.5/")
-  (rime-share-data-dir "~/.local/share/fcitx5/rime/")
+  (rime-share-data-dir "/usr/share/rime-data")
+  :hook
+  (post-self-insert . yu/rime-switch-layout)
   :config
   (defun rime-predicate-meow-mode-p ()
     "Detect whether the current buffer is in `meow' state.
@@ -905,8 +1018,22 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   (setq rime-inline-predicates
         '(rime-predicate-space-after-cc-p))
   (setq rime-inline-ascii-trigger 'shift-l)
-  (setq rime-show-candidate 'minibuffer)
+  (setq rime-show-candidate 'posframe)
   (define-key rime-mode-map (kbd "M-i") 'rime-force-enable))
+
+(defun yu/rime-switch-qwerty ()
+  (shell-command "im-select.exe 2052"))
+
+(defun yu/rime-switch-dvorak ()
+  (shell-command "im-select.exe locale"))
+
+(defun yu/rime-switch-layout ()
+  " Auto switch system keyboard layout for wsl.
+I use this to switch to Dvorak keymap in inline-ascii mode."
+  (if rime-mode
+      (if (eq (rime--should-inline-ascii-p) nil)
+  	(yu/rime-switch-qwerty)
+      (yu/rime-switch-dvorak))))
 
 ;; Change keyboard layout
 ;; (use-package quail
@@ -919,6 +1046,65 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
 ;;                                      "  ;:qQjJkKxXbBmMwWvVzZ        "
 ;;                                      "                              ")))
 ;;   (quail-set-keyboard-layout "dvorak"))
+
+;; Use pcomplete to generate shell completion
+(use-package pcmpl-args
+  :straight t)
+
+(use-package eglot
+  :init
+  (setq eglot-sync-connect 1
+      eglot-connect-timeout 10
+      eglot-autoshutdown t
+      eglot-send-changes-idle-time 0.5)
+  :bind
+  (:map eglot-mode-map
+      ("C-c c a" . 'eglot-code-actions)
+      ("C-c c r" . 'eglot-rename))
+  :hook
+  (rust-ts-mode . 'eglot-ensure)
+  :config  
+  ;; Ensure completion table is refreshed such that
+  ;; the candidates are always obtained again from the server.
+  ;; Depending on if your server returns sufficiently many candidates in the first place.
+  (with-eval-after-load 'eglot
+    (setq completion-category-defaults nil))
+
+  ;; (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster)
+
+  ;; Combine eglot, tempel and cape-file into same place.
+  (defun my/eglot-capf ()
+    (setq-local completion-at-point-functions
+  	      (list (cape-super-capf
+                       #'eglot-completion-at-point
+                       #'tempel-expand
+                       #'cape-file))))
+  (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
+  )
+
+(use-package flycheck-eglot
+  :straight t
+  :after (flycheck eglot)
+  :config
+  (global-flycheck-eglot-mode 1))
+
+(use-package eglot-x
+  :straight (eglot-x :type git :host github
+  		   :repo "nemethf/eglot-x")
+  :after eglot
+  :config
+  (eglot-x-setup))
+
+(use-package lsp-bridge
+  :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
+  		       :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
+  		       :build (:not compile))
+  :disabled t
+  :init
+  (global-lsp-bridge-mode)
+  :config
+  (setq acm-enable-copilot t
+      acm-enable-preview nil))
 
 ;; Show my keybindings
 (use-package which-key
@@ -974,6 +1160,7 @@ targets."
 ;; Better project management
 (use-package projectile
   :straight t
+  :disabled t
   :custom
   (projectile-sort-order 'recently-active)
   (projectile-project-search-path '("~/Projects/"))
@@ -1129,22 +1316,30 @@ targets."
   :straight t
   :init (doom-modeline-mode 1)
   :custom
+  (doom-modeline-support-imenu t)
   (doom-modeline-hud t) ; Disable graphical modeline
   (doom-modeline-modal t) ; Show INSERT/NORMAL for modal editor
   (doom-modeline-modal-icon t) ; Show icons for modal editor
   (doom-modeline-height 32) ; Set the height of modeline
+  (doom-modeline-icon t)
   ;; (doom-modeline-display-default-persp-name t)
   )
 
 (use-package dashboard
   :straight t
   :custom
-  (dashboard-startup-banner '1)
+  (dashboard-startup-banner '2)
   (dashboard-projects-backend 'projectile) ; Get projects from projectile
   ;; (dashboard-page-separator "\n\f\n")      ; Use page-break-lines
   (dashboard-center-content t)             ; Put content right
   (dashboard-agenda-release-buffers t)
+  (dashboard-icon-type 'nerd-icons)
+  (dashboard-set-heading-icons nil)
+  (dashboard-set-file-icons nil)
   :config
+  (dashboard-modify-heading-icons '((recents . "nf-oct-history")
+  				  (projects . "nf-oct-rocket")
+  				  (bookmarks . "nf-oct-bookmark")))
   (add-to-list 'dashboard-items '(projects . 5) t)
   (dashboard-setup-startup-hook)
   (setq initial-buffer-choice
@@ -1215,27 +1410,13 @@ targets."
   :defer t
   :hook (prog-mode . rainbow-delimiters-mode))
 
-;; UI Customization
-(scroll-bar-mode -1)
-(tool-bar-mode -1)
-(tooltip-mode -1)
-(menu-bar-mode -1)
-(blink-cursor-mode -1)
-;; nice scrolling
-(setq scroll-margin 0
-      scroll-conservatively 100000
-      scroll-preserve-screen-position 1)
-(column-number-mode t) ; enable column number
-(size-indication-mode t) ; show size on mode line
-
 (use-package display-line-numbers
-  :hook
-  ((prog-mode text-mode conf-mode) . display-line-numbers-mode)
+  :defer t
   :config
   (defcustom display-line-numbers-exempt-modes
     '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
                  treemacs-mode dashboard-mode org-mode which-key-mode
-  	       vterm-mode)
+  	       vterm-mode org-mode occur-mode)
     "Major modes on which to disable line numbers."
     :group 'display-line-numbers
     :type 'list
@@ -1248,13 +1429,38 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
                 (member major-mode display-line-numbers-exempt-modes))
       (display-line-numbers-mode)))
 
-  (setq display-line-numbers 't) ; Relative or Absolute
-  ;; (global-hl-line-mode) ; Highlight current line
+  (global-display-line-numbers-mode)
+  ; (global-hl-line-mode) ; Highlight current line
   )
+
+(use-package pulsar
+  :straight t
+  :defer t
+  :custom
+  (puls-pulse t)
+  (pulsar-delay 0.055)
+  (pulsar-iterations 10)
+  (pulsar-face 'pulsar-magenta)
+  (pulsar-highlight-face 'pulsar-yellow)
+  :init
+  (pulsar-global-mode 1)
+  :hook
+  (next-error . 'pulsar-pulse-line)
+
+  ;; integration with the `consult' package
+  (consult-after-jump . 'pulsar-recenter-top)
+  (consult-after-jump . 'pulsar-reveal-entry)
+
+  ;; integration with the built-in `imenu'
+  (imenu-after-jump . 'pulsar-recenter-top)
+  (imenu-after-jump . 'pulsar-reveal-entry)
+  :config
+  (add-to-list 'pulsar-pulse-functions 'ace-window)
+  (add-to-list 'pulsar-pulse-functions 'meow-search))
 
 ;; Set up font
 (add-to-list 'default-frame-alist
-             '(font . "MonoLisa-11"))
+             '(font . "MonoLisa-14"))
 
 (use-package cnfonts
   :straight t
@@ -1303,6 +1509,37 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
   (global-ligature-mode t)
   )
+
+(use-package emojify
+  :straight t
+  :hook (after-init . global-emojify-mode))
+
+(use-package breadcrumb
+  :straight t
+  :defer t
+  :custom
+  (breadcrumb-project-max-length 0.5)
+  (breadcrumb-project-crumb-separator "/")
+  (breadcrumb-imenu-max-length 1.0)
+  (breadcrumb-imenu-crumb-separator " > ")
+  :init
+  (breadcrumb-mode 1))
+
+(use-package spacious-padding
+  :straight t
+  :defer t
+  :init
+  (spacious-padding-mode 1)
+  :bind
+  ([f8] . 'spacious-padding-mode)
+  :config
+  (setq spacious-padding-widths
+        '( :internal-border-width 15
+           :header-line-width 4
+           :mode-line-width 6
+           :tab-width 4
+           :right-divider-width 30
+           :scroll-bar-width 8)))
 
 (use-package treesit
   :commands (treesit)
@@ -1357,16 +1594,14 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (org-level-2 ((t (:height 1.3))))
   (org-level-3 ((t (:height 1.15))))
   :hook
-  (org-mode . org-indent-mode)
   (org-mode . (lambda ()
                 (toggle-truncate-lines nil)))
   :custom
   ;; Org files
-  (org-directory "~/OneDrive/org/") ; Note directory
+  (org-directory "~/org/") ; Note directory
   (org-default-notes-file (concat org-directory "inbox.org")) ; Default entry point
 
   ;; Useful settings
-  (org-hide-leading-stars t)
   (org-startup-folded (quote overview)) ; Fold all by default
   (org-hide-emphasis-markers t) ; Hide emphasis markers
   (org-log-done 'time) ; Log time when finish a job
@@ -1387,20 +1622,36 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (org-image-actual-width '(400))
   (org-reveal-root "https://revealjs.com"))
 
+(use-package svg-lib :straight t)
 (use-package org-modern
   :straight t
   :hook
   (org-mode . org-modern-mode)
   (org-agenda-finalize . org-modern-agenda)
   :config
-  (setq org-agenda-tags-column 0
-      org-agenda-block-separator ?─
-      org-agenda-time-grid
-      '((daily today require-timed)
-  	(800 1000 1200 1400 1600 1800 2000)
-  	" ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
-      org-agenda-current-time-string
-      "⭠ now ─────────────────────────────────────────────────"))
+  (setq
+   ;; Edit settings
+   org-auto-align-tags nil
+   org-tags-column 0
+   org-catch-invisible-edits 'show-and-error
+   org-special-ctrl-a/e t
+   org-insert-heading-respect-content t
+
+   ;; Org styling, hide markup etc.
+   org-hide-emphasis-markers t
+   org-pretty-entities t
+   org-ellipsis "…"
+
+   ;; Agenda styling
+   org-agenda-tags-column 0
+   org-agenda-block-separator ?─
+   org-agenda-time-grid
+   '((daily today require-timed)
+     (800 1000 1200 1400 1600 1800 2000)
+     " ┄┄┄┄┄ " "┄┄┄┄┄┄┄┄┄┄┄┄┄┄┄")
+   org-agenda-current-time-string
+   "◀── now ─────────────────────────────────────────────────")
+  )
 
 (use-package org-capture
   :defer t
@@ -1427,7 +1678,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
    ("C-c n d t" . 'org-roam-dailies-find-today)
    ("C-c n d j" . 'org-roam-dailies-find-date))
   :custom
-  (org-roam-directory "~/OneDrive/org/roam")
+  (org-roam-directory "~/org/roam")
   (org-roam-dailies-directory "50 Journals")
   :config
   ;; Roam buffer now act as a side window
@@ -1573,6 +1824,13 @@ tasks."
 (use-package org-roam-protocol
   :after org-roam)
 
+(use-package denote
+  :straight t
+  :defer t
+  :config
+  (setq denote-directory (file-name-concat org-directory "denote/"))
+  )
+
 (use-package org-appear
   :straight (org-appear
   	   :type git
@@ -1661,6 +1919,7 @@ tasks."
 ;; I am using devenv to manage project environment
 (use-package envrc
   :straight t
+  :disabled t
   :hook
   (after-init . envrc-global-mode)
   )
@@ -1692,3 +1951,13 @@ tasks."
 (use-package anki-editor
   :defer t
   :straight (:fork "orgtre"))
+
+(use-package gptel
+  :straight t
+  :config
+  (setq gptel-api-key "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")
+  (gptel-make-ollama
+   "Ollama"
+   :host "localhost:11434"
+   :models '("zephyr:latest")
+   :stream t))
