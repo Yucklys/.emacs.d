@@ -54,7 +54,7 @@
 
 (use-package emacs
   :bind
-  ("C-c f p" . my/find-file-in-private-config)
+  ("C-c f p" . yu/find-file-in-private-config)
   ("C-c q r" . 'restart-emacs)
   :custom
   ;; TAB cycle if there are only few candidates
@@ -124,6 +124,19 @@
    "C-c v S"   ("Git stage file" . magit-stage-file)
    "C-c v U"   ("Git unstage file" . magit-unstage-file)
    ))
+
+;; Set PATH for remote machine respect to user's PATH
+(connection-local-set-profile-variables 'remote-path-with-bin
+  				      '((tramp-remote-path . (tramp-default-remote-path
+  							      tramp-own-remote-path))))
+
+(connection-local-set-profiles
+   '(:application tramp :user "vagrant") 'remote-path-with-bin)
+
+(use-package tramp
+  :config
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+  (add-to-list 'tramp-remote-path "~/.cargo/bin"))
 
 (use-package corfu
   :straight t
@@ -384,7 +397,7 @@
   :straight t
   ;; Require trigger prefix before template name when completing.
   :custom
-  (tempel-trigger-prefix "<")
+  (tempel-trigger-prefix nil)
 
   :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
          ("M-*" . tempel-insert)
@@ -463,23 +476,23 @@
   :hook (completion-list-mode . consult-preview-at-point-mode)
   :bind (("C-x b"   . 'my/consult-buffer)
        ("C-x B"   . 'consult-buffer)
-         ("C-c j i" . 'consult-imenu)
-         ("C-c j b" . 'consult-bookmark)
-         ("C-c j m" . 'consult-mark)
-         ("C-c j o" . 'consult-outline)
-         ("C-c j r" . 'consult-recent-file)
-         ("C-c j l" . 'consult-line)
-         ("C-c j L" . 'consult-line-multi)
-         ("C-c j g" . 'consult-ripgrep)
-         ("C-c j f" . 'consult-find)
-         ("C-c j F" . 'consult-locate)
-         ("C-c j h" . 'consult-complex-command)
-         ("C-c j c" . 'consult-mode-command)
-         ("C-c j a" . 'consult-org-agenda)
+         ("C-c f i" . 'consult-imenu)
+         ("C-c f b" . 'consult-bookmark)
+         ("C-c f m" . 'consult-mark)
+         ("C-c f o" . 'consult-outline)
+         ("C-c f r" . 'consult-recent-file)
+         ("C-c f l" . 'consult-line)
+         ("C-c f L" . 'consult-line-multi)
+         ("C-c f g" . 'consult-ripgrep)
+         ("C-c f f" . 'consult-find)
+         ("C-c f F" . 'consult-locate)
+         ("C-c f h" . 'consult-complex-command)
+         ("C-c f c" . 'consult-mode-command)
+         ("C-c f a" . 'consult-org-agenda)
          ("C-c s f" . 'consult-focus-lines)
          ("C-c s m" . 'consult-minor-mode-menu)
          :map org-mode-map
-         ("C-c j o" . 'consult-org-heading)
+         ("C-c f o" . 'consult-org-heading)
          :map help-map
          ("t" . 'consult-theme))
   :init
@@ -600,10 +613,15 @@
 (use-package dash
   :straight t)
 
-(defun my/find-file-in-private-config ()
+(defun yu/find-file-in-private-config ()
   "Search for a file in `doom-user-dir'."
   (interactive)
   (dired-find-file user-emacs-directory))
+
+(defun yu/nixos-get-package-path (package)
+  "Find package path in store in NixOS."
+  (setq command (format "fd -d 1 %s /nix/store -t directory -1 -0" package))
+  (substring (shell-command-to-string command) 0 -1))
 
 ;; Persist history over Emacs restarts. Vertico sorts by history position.
 (use-package savehist
@@ -992,8 +1010,11 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   (default-input-method "rime")
   ;; Custom lib path for NixOS
   (rime-share-data-dir "/usr/share/rime-data")
-  :hook
-  (post-self-insert . yu/rime-switch-layout)
+  (rime-emacs-module-header-root (concat (yu/nixos-get-package-path "emacs-pgtk") "include"))
+  (rime-librime-root (yu/nixos-get-package-path "librime"))
+  ;; :hook
+  ;; (input-method-activate . (lambda () (shell-command "hyprctl switchxkblayout keychron-keychron-v1 1")))
+  ;; (input-method-deactivate . (lambda () (shell-command "hyprctl switchxkblayout keychron-keychron-v1 0")))
   :config
   (defun rime-predicate-meow-mode-p ()
     "Detect whether the current buffer is in `meow' state.
@@ -1021,19 +1042,19 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   (setq rime-show-candidate 'posframe)
   (define-key rime-mode-map (kbd "M-i") 'rime-force-enable))
 
-(defun yu/rime-switch-qwerty ()
-  (shell-command "im-select.exe 2052"))
-
-(defun yu/rime-switch-dvorak ()
-  (shell-command "im-select.exe locale"))
-
-(defun yu/rime-switch-layout ()
-  " Auto switch system keyboard layout for wsl.
-I use this to switch to Dvorak keymap in inline-ascii mode."
-  (if rime-mode
-      (if (eq (rime--should-inline-ascii-p) nil)
-  	(yu/rime-switch-qwerty)
-      (yu/rime-switch-dvorak))))
+(use-package sis
+  :straight t
+  :config
+  (sis-ism-lazyman-config "1" "2" 'fcitx5)
+  ;; enable the /respect/ mode
+  (sis-global-respect-mode t)
+  ;; enable the /context/ mode for all buffers
+  (sis-global-context-mode t)
+  ;; enable the /inline english/ mode for all buffers
+  (sis-global-inline-mode t)
+  ;; support for meow
+  (add-hook 'meow-insert-exit-hook #'sis-set-english)
+  (add-to-list 'sis-context-hooks 'meow-insert-enter-hook))
 
 ;; Change keyboard layout
 ;; (use-package quail
@@ -1075,8 +1096,7 @@ I use this to switch to Dvorak keymap in inline-ascii mode."
   ;; Combine eglot, tempel and cape-file into same place.
   (defun my/eglot-capf ()
     (setq-local completion-at-point-functions
-  	      (list (cape-super-capf
-                       #'eglot-completion-at-point
+  	      (list (#'eglot-completion-at-point
                        #'tempel-expand
                        #'cape-file))))
   (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
@@ -1416,7 +1436,7 @@ targets."
   (defcustom display-line-numbers-exempt-modes
     '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
                  treemacs-mode dashboard-mode org-mode which-key-mode
-  	       vterm-mode org-mode occur-mode)
+  	       vterm-mode org-mode occur-mode pdf-view-mode)
     "Major modes on which to disable line numbers."
     :group 'display-line-numbers
     :type 'list
@@ -1558,6 +1578,9 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (with-eval-after-load 'treesit
     (add-to-list 'treesit-extra-load-path
                  (straight--build-dir "tree-sitter-module"))))
+
+(add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
+  			      dockerfile-ts-mode))
 
 (use-package markdown-mode
   :straight t
@@ -1866,6 +1889,7 @@ tasks."
   ;; (setq rust-prettify-symbols-alist nil)
   (setq rustic-format-trigger 'on-save)
   ;; (setq rustic-format-on-save t)
+  (setq rustic-rustfmt-bin-remote "rustfmt")
   )
 
 (add-to-list 'major-mode-remap-alist
@@ -1914,6 +1938,8 @@ tasks."
 (use-package just-mode
   :straight t
   :mode ("\\justfile\\'" . just-mode))
+
+(use-package yuck-mode :straight t)
 
 ;; Integrate with nix-direnv
 ;; I am using devenv to manage project environment
