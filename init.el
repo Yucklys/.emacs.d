@@ -56,6 +56,9 @@
   :bind
   ("C-c f p" . yu/find-file-in-private-config)
   ("C-c q r" . 'restart-emacs)
+  ("C-c b b" . 'my/consult-buffer)
+  ("C-c b B" . 'consult-buffer)
+  ("C-c b k" . 'kill-current-buffer)
   :custom
   ;; TAB cycle if there are only few candidates
   (completion-cycle-threshold 3)
@@ -123,7 +126,10 @@
    "C-c v L"   ("Magit buffer log" . magit-log-buffer-file)
    "C-c v S"   ("Git stage file" . magit-stage-file)
    "C-c v U"   ("Git unstage file" . magit-unstage-file)
-   ))
+   )
+  :config
+  (setq magit-bury-buffer-function #'magit-mode-quit-window)
+  )
 
 ;; Set PATH for remote machine respect to user's PATH
 (connection-local-set-profile-variables 'remote-path-with-bin
