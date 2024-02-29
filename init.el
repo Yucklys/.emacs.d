@@ -109,6 +109,10 @@
   (setq make-backup-files nil)
   (setq backup-inhibited nil)
   (setq create-lockfiles nil)
+
+  ;; Default shell
+  (setq shell-file-name "/bin/sh")
+  (setq sh-shell-file "/bin/sh")
   )
 
 (use-package magit
@@ -448,8 +452,8 @@
                                 :repo "svaante/lsp-snippet")
   :config
   ;; Initialize lsp-snippet -> tempel in eglot
-  (lsp-snippet-tempel-eglot-init)
-  ;; (lsp-snippet-tempel-lsp-mode-init)
+  ;; (lsp-snippet-tempel-eglot-init)
+  (lsp-snippet-tempel-lsp-mode-init)
   )
 
 (use-package isearch
@@ -480,8 +484,7 @@
 (use-package consult
   :straight t
   :hook (completion-list-mode . consult-preview-at-point-mode)
-  :bind (("C-x b"   . 'my/consult-buffer)
-       ("C-x B"   . 'consult-buffer)
+  :bind (("C-x b"   . 'consult-buffer)
          ("C-c f i" . 'consult-imenu)
          ("C-c f b" . 'consult-bookmark)
          ("C-c f m" . 'consult-mark)
@@ -509,13 +512,6 @@
   ;; Use Consult to select xref locations with preview
   (setq xref-show-xrefs-function #'consult-xref
         xref-show-definitions-function #'consult-xref)
-
-  (defun my/consult-buffer ()
-    "Use `consult-project-buffer' when inside a project, otherwise use `consult-buffer'"
-    (interactive)
-    (if (project-current)
-      (consult-project-buffer)
-      (consult-buffer)))
 
   :config
   (setq consult-buffer-filter `(,@consult-buffer-filter
@@ -653,206 +649,66 @@
   (add-to-list 'recentf-exclude
                (concat org-directory "index.org")))
 
-(use-package centaur-tabs
-  :straight t
+(use-package tab-bar
   :bind
-  ("C-c t n" . 'centaur-tabs-forward-tab)
-  ("C-c t p" . 'centaur-tabs-backward-tab)
-  ("C-c t N" . 'centaur-tabs-select-end-tab)
-  ("C-c t P" . 'centaur-tabs-select-beg-tab)
-  ("C-c t s" . 'centaur-tabs-switch-group)
-  ("C-c t j" . 'centaur-tabs-ace-jump)
-  :hook
-  (org-src-mode . centaur-tabs-local-mode) ; disable bar in org edit src
-  (dashboard-mode . centaur-tabs-local-mode)
-  (term-mode . centaur-tabs-local-mode)
-  (org-agenda-mode . centaur-tabs-local-mode)
-  (calendar-mode . centaur-tabs-local-mode)
-  (elfeed-search-mode . centaur-tabs-local-mode)
+  ("C-c b n" . 'tab-bar-switch-to-next-tab)
+  ("C-c b p" . 'tab-bar-switch-to-prev-tab)
+  ("C-c b N" . 'tab-bar-switch-to-last-tab)
+  ("C-c b b" . 'tab-bar-switch-to-tab)
+  ("C-c b k" . 'tab-bar-close-tab)
+  ("C-c b K" . 'tab-bar-close-tab-by-name)
+  :init
+  (tab-bar-mode +1)
+  :custom
+  ;; Only show the tab bar if operating on tabs
+  (tab-bar-show t)
+  ;; Do not show buttons
+  (tab-bar-new-button-show nil)
+  (tab-bar-close-button-show nil)
+  ;; Show hint index
+  ;; Open new tab rightmost
+  (tab-bar-new-tab-to "rightmost")
 
-  :init        
-  (defun centaur-tabs-buffer-groups ()
-    "`centaur-tabs-buffer-groups' control buffers' group rules.
+  ;; Custom tab name and group format
+  ;; (tab-bar-tab-name-format-function #'my/tab-bar-format)
+  ;; (tab-bar-tab-name-function #'my/tab-bar-tab-name)
+  ;; (tab-bar-tab-group-format-function #'hyphon-tab-bar-tab-group-format-default)
 
-Group centaur-tabs with mode if buffer is derived from `eshell-mode' `emacs-lisp-mode' `dired-mode' `org-mode' `magit-mode'.
-All buffer name start with * will group to \"Emacs\".
-Other buffer group by `centaur-tabs-get-group-name' with project name."
-    (list
-     (cond
-      ((or (string-equal "*" (substring (buffer-name) 0 1))
-           (memq major-mode '(magit-process-mode
-                              magit-status-mode
-                              magit-diff-mode
-                              magit-log-mode
-                              magit-file-mode
-                              magit-blob-mode
-                              magit-blame-mode
-                              )))
-       "Emacs")
-      ((derived-mode-p 'prog-mode)
-       "Editing")
-      ((derived-mode-p '(eshell-mode
-  		       vterm-mode))
-       "Term")
-      ((derived-mode-p 'dired-mode)
-       "Dired")
-      ((memq major-mode '(helpful-mode
-                          help-mode))
-       "Help")
-      ((memq major-mode '(org-mode
-  			org-roam-mode
-                          org-agenda-clockreport-mode
-                          org-src-mode
-                          org-agenda-mode
-                          org-beamer-mode
-                          org-indent-mode
-                          org-bullets-mode
-                          org-cdlatex-mode
-                          org-agenda-log-mode
-                          diary-mode))
-       "Org")
-      (t
-       (centaur-tabs-get-group-name (current-buffer))))))
+  ;; Open dashboard with new tab
+  (tab-bar-new-tab-choice #'dashboard-open)
 
-  (defun centaur-tabs-hide-tab (x)
-    "Do no to show buffer X in tabs."
-    (let ((name (format "%s" x)))
-      (or
-       ;; Current window is not dedicated window.
-       (window-dedicated-p (selected-window))
+  ;; (tab-bar-format '(tab-bar-format-tabs-groups tab-bar-separator))
+  :config  
+  (defun my/tab-bar-format (tab i)
+    (let ((current-p (eq (car tab) 'current-tab)))
+      (propertize
+       (concat (if tab-bar-tab-hints (format "%d " i) "")
+               (alist-get 'name tab)
+               (or (and tab-bar-close-button-show
+  		      (not (eq tab-bar-close-button-show
+  			       (if current-p 'non-selected 'selected)))
+  		      tab-bar-close-button)
+                   ""))
+       'face (funcall tab-bar-tab-face-function tab))))
 
-       ;; Buffer name not match below blacklist.
-       (string-prefix-p "*epc" name)
-       (string-prefix-p "*helm" name)
-       (string-prefix-p "*Helm" name)
-       (string-prefix-p "*Compile-Log*" name)
-       (string-prefix-p "*lsp" name)
-       (string-prefix-p "*company" name)
-       (string-prefix-p "*Flycheck" name)
-       (string-prefix-p "*tramp" name)
-       (string-prefix-p " *Mini" name)
-       (string-prefix-p "*help" name)
-       (string-prefix-p "*straight" name)
-       (string-prefix-p " *temp" name)
-       (string-prefix-p "*Help" name)
-       (string-prefix-p "*mybuf" name)
+  (defun my/tab-bar-tab-name ()
+    (let ((project (project-current)))
+      (concat (if project "[" "")
+  	    project
+  	    (if project "] " "")
+  	    (tab-bar-tab-name-current)))
+    )
 
-       ;; Is not magit buffer.
-       (and (string-prefix-p "magit" name)
-            (not (file-name-extension name)))
-       )))
-  (centaur-tabs-mode t)
-  (centaur-tabs-headline-match)
+  (setq tab-bar-tab-hints nil)
+  (setq tab-bar-auto-width nil)
+  (setq tab-bar-format '(tab-bar-format-history
+  		       tab-bar-format-tabs
+  		       tab-bar-separator
+  		       tab-bar-format-align-right
+  		       tab-bar-format-global
+  		       ))
 
-  :config
-  ;; Tab appearence
-  (setq centaur-tabs-style "bar")
-  (setq centaur-tabs-height 32)
-  (setq centaur-tabs-set-icons t)
-  (setq centaur-tabs-icon-type 'nerd-icons)
-  (setq centaur-tabs-set-bar 'under)
-  (setq x-underline-at-descent-line t)
-  (setq centaur-tabs-set-close-button nil)
-  (setq centaur-tabs-set-modified-marker t)
-
-  ;; Customize
-  (setq centaur-tabs-cycle-scope 'tabs) ; tabs or groups
-  (setq centaur-tabs--buffer-show-groups nil)
-  (centaur-tabs-enable-buffer-reordering)
-  (setq centaur-tabs-adjust-buffer-order t)
-
-  ;; Integration
-  (centaur-tabs-group-by-projectile-project)
-
-  ;; Custome face
-  (set-face-attribute 'centaur-tabs-selected nil
-  		    :inherit 'centaur-tabs-selected
-  		    :underline "#81A1C1")
-  (set-face-attribute 'centaur-tabs-selected-modified nil
-  		    :inherit 'centaur-tabs-selected
-  		    :foreground "#8FBCBB"
-  		    :underline "#81A1C1")
-  (set-face-attribute 'centaur-tabs-default nil
-  		    :inherit 'centaur-tabs-default
-  		    :background "#3B4252")
   )
-
-(defun tdr/fix-centaur-tabs ()
-  (centaur-tabs-mode -1)
-  (centaur-tabs-mode)
-  (centaur-tabs-headline-match)
-  )
-
-(if (daemonp)
-    (add-hook 'after-make-frame-functions
-  	    (lambda (frame)
-  	      (with-selected-frame frame
-  		(tdr/fix-centaur-tabs)))
-  	    (tdr/fix-centaur-tabs))
-  )
-
-
-
-;; (use-package tab-bar
-;;   :bind
-;;   ("C-c b n" . 'tab-bar-switch-to-next-tab)
-;;   ("C-c b p" . 'tab-bar-switch-to-prev-tab)
-;;   ("C-c b N" . 'tab-bar-switch-to-last-tab)
-;;   ("C-c b b" . 'tab-bar-switch-to-tab)
-;;   ("C-c b k" . 'tab-bar-close-tab)
-;;   ("C-c b K" . 'tab-bar-close-tab-by-name)
-;;   :init
-;;   (tab-bar-mode +1)
-;;   :custom
-;;   ;; Only show the tab bar if there are 2 or more tabs
-;;   (tab-bar-show t)
-;;   ;; Do not show buttons
-;;   (tab-bar-new-button-show nil)
-;;   (tab-bar-close-button-show nil)
-;;   ;; Show hint index
-;;   ;; Open new tab rightmost
-;;   (tab-bar-new-tab-to "rightmost")
-
-;;   ;; Custom tab name and group format
-;;   (tab-bar-tab-name-format-function #'my/tab-bar-format)
-;;   (tab-bar-tab-name-function #'my/tab-bar-tab-name)
-;;   ;; (tab-bar-tab-group-format-function #'hyphon-tab-bar-tab-group-format-default)
-
-;;   ;; Open dashboard with new tab
-;;   (tab-bar-new-tab-choice #'dashboard-open)
-
-;;   ;; (tab-bar-format '(tab-bar-format-tabs-groups tab-bar-separator))
-;;   :config  
-;;   (defun my/tab-bar-format (tab i)
-;;     (let ((current-p (eq (car tab) 'current-tab)))
-;;       (propertize
-;;        (concat (if tab-bar-tab-hints (format "%d " i) "")
-;;                (alist-get 'name tab)
-;;                (or (and tab-bar-close-button-show
-;; 			(not (eq tab-bar-close-button-show
-;; 				 (if current-p 'non-selected 'selected)))
-;; 			tab-bar-close-button)
-;;                    ""))
-;;        'face (funcall tab-bar-tab-face-function tab))))
-
-;;   (defun my/tab-bar-tab-name ()
-;;     (let ((project (project-current)))
-;;       (concat (if project "[" "")
-;; 	      project
-;; 	      (if project "] " "")
-;; 	      (tab-bar-tab-name-current)))
-;;     )
-
-;;   (setq tab-bar-tab-hints nil)
-;;   (setq tab-bar-auto-width nil)
-;;   (setq tab-bar-format '(tab-bar-format-history
-;; 			 tab-bar-format-tabs
-;; 			 tab-bar-separator
-;; 			 tab-bar-format-align-right
-;; 			 tab-bar-format-global
-;; 			 ))
-
-;;   )
 
 (use-package flycheck
   :straight t
@@ -1007,6 +863,44 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   					   "/git-rebase-todo\\'"))
   (undo-fu-session-global-mode))
 
+(defun toggle-selective-display (column)
+      (interactive "P")
+      (set-selective-display
+       (or column
+           (unless selective-display
+             (1+ (current-column))))))
+
+(defun toggle-hiding (column)
+      (interactive "P")
+      (if hs-minor-mode
+          (if (condition-case nil
+                  (hs-toggle-hiding)
+                (error t))
+              (hs-show-all))
+        (toggle-selective-display column)))
+
+(load-library "hideshow")
+(global-set-key (kbd "C-+") 'toggle-hiding)
+(global-set-key (kbd "C-\\") 'toggle-selective-display)
+
+(add-hook 'c-mode-common-hook   'hs-minor-mode)
+(add-hook 'emacs-lisp-mode-hook 'hs-minor-mode)
+(add-hook 'java-mode-hook       'hs-minor-mode)
+(add-hook 'lisp-mode-hook       'hs-minor-mode)
+(add-hook 'perl-mode-hook       'hs-minor-mode)
+(add-hook 'sh-mode-hook         'hs-minor-mode)
+
+(use-package ts-fold
+  :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+  :defer t
+  :config
+  (custom-set-faces! '(ts-fold-replacement-face :foreground unspecified
+                                                :box nil
+                                                :inherit font-lock-comment-face
+                                                :weight light))
+  (setq ts-fold-replacement "  [...]  ")
+  (ts-fold-mode +1))
+
 (use-package rime
   :straight (rime :type git
                   :host github
@@ -1078,48 +972,132 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
 (use-package pcmpl-args
   :straight t)
 
-(use-package eglot
-  :init
-  (setq eglot-sync-connect 1
-      eglot-connect-timeout 10
-      eglot-autoshutdown t
-      eglot-send-changes-idle-time 0.5)
+(use-package vterm
+  :straight t
   :bind
-  (:map eglot-mode-map
-      ("C-c c a" . 'eglot-code-actions)
-      ("C-c c r" . 'eglot-rename))
-  :hook
-  (rust-ts-mode . 'eglot-ensure)
-  :config  
-  ;; Ensure completion table is refreshed such that
-  ;; the candidates are always obtained again from the server.
-  ;; Depending on if your server returns sufficiently many candidates in the first place.
-  (with-eval-after-load 'eglot
-    (setq completion-category-defaults nil))
+  (("C-c o T" . 'vterm)
+   :map vterm-mode-map
+   ("C-q" . 'vterm-send-next-key))
 
-  ;; (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster)
-
-  ;; Combine eglot, tempel and cape-file into same place.
-  (defun my/eglot-capf ()
-    (setq-local completion-at-point-functions
-  	      (list (#'eglot-completion-at-point
-                       #'tempel-expand
-                       #'cape-file))))
-  (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
+  :config
+  (setq vterm-kill-buffer-on-exit t)
+  (setq vterm-shell "nu")
+  (add-hook 'vterm-mode-hook
+            (lambda ()
+              (set (make-local-variable 'buffer-face-mode-face)
+  		 '(:height 140 :family "Iosevka Nerd Font"))
+              (buffer-face-mode t)))
   )
 
-(use-package flycheck-eglot
+(use-package vterm-toggle
   :straight t
-  :after (flycheck eglot)
+  :bind
+  (("C-c o t" . 'vterm-toggle)
+   :map vterm-mode-map
+   ("M-n" . 'vterm-toggle-forward)
+   ("M-p" . 'vterm-toggle-backward))
   :config
-  (global-flycheck-eglot-mode 1))
+  (setq vterm-toggle-fullscreen-p nil)
+  (add-to-list 'display-buffer-alist
+             '((lambda (buffer-or-name _)
+                   (let ((buffer (get-buffer buffer-or-name)))
+                     (with-current-buffer buffer
+                       (or (equal major-mode 'vterm-mode)
+                           (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
+               (display-buffer-reuse-window display-buffer-in-side-window)
+               (side . bottom)
+               ;;(dedicated . t) ;dedicated is supported in emacs27
+               (reusable-frames . visible)
+               (window-height . 0.4)))
+  )
 
-(use-package eglot-x
-  :straight (eglot-x :type git :host github
-  		   :repo "nemethf/eglot-x")
-  :after eglot
+(use-package lsp-mode
+  :straight t
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+
+  (defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))) ;; Configure orderless
+
+  :bind
+  (:map lsp-mode-map
+      ("C-c c a" . 'lsp-execute-code-action)
+      ("C-c c d" . 'lsp-find-definition)
+      ("C-c c i" . 'lsp-find-implementation)
+      ("C-c c r" . 'lsp-rename))
+
+  :custom
+  (lsp-completion-provider :none)
+
+  :hook
+  ;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+  ;; (XXX-mode . lsp)
+  ;; if you want which-key integration
+  (lsp-mode . lsp-enable-which-key-integration)
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
+  (rustic-mode . 'lsp-deferred)
+  ((python-mode python-ts-mode) . 'lsp-deferred)
+
   :config
-  (eglot-x-setup))
+  ;; Disable default keybindings
+  (setq lsp-keymap-prefix nil)
+  (setq read-process-output-max (* 1024 1024)) ;; 1mb)
+  (setq lsp-log-io nil)
+  (setq lsp-enable-snippet nil)
+  (setq lsp-pylsp-plugins-black-enabled t)
+
+  ;; Some features that have great potential to be slow.
+  ;; Suggested by Doom Emacs
+  (setq lsp-enable-folding nil
+        lsp-enable-text-document-color nil)
+
+  ;; Disable breadcrumbs
+  (setq lsp-headerline-breadcrumb-enable nil)
+
+  ;; Enable inlay hint
+  (setq lsp-inlay-hint-enable t))
+
+(use-package lsp-ui
+  :hook (lsp-mode . lsp-ui-mode)
+  :straight t
+  :config
+  (setq lsp-ui-peek-enable t
+        lsp-ui-doc-max-height 8
+        lsp-ui-doc-max-width 72         ; 150 (default) is too wide
+        lsp-ui-doc-delay 0.75           ; 0.2 (default) is too naggy
+        lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
+        lsp-ui-doc-position 'at-point
+        lsp-ui-sideline-ignore-duplicate t
+        ;; Don't show symbol definitions in the sideline. They are pretty noisy,
+        ;; and there is a bug preventing Flycheck errors from being shown (the
+        ;; errors flash briefly and then disappear).
+        lsp-ui-sideline-show-hover nil
+        ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
+        ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
+        lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
+  )
+
+(use-package lsp-treemacs
+  :straight t
+  :after (lsp-mode treemacs doom-themes)
+  :config
+  (lsp-treemacs-sync-mode 1)
+
+  ;; Fix conflict of icon theme with doom themes
+  (with-eval-after-load 'lsp-treemacs
+    (doom-themes-treemacs-config))
+  )
+
+(use-package consult-lsp
+  :straight t
+  :after (lsp-mode consult)
+  :bind
+  (:map lsp-mode-map
+      ([remap xref-find-apropos] . 'consult-lsp-symbols)
+      )
+  )
 
 (use-package lsp-bridge
   :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
@@ -1471,15 +1449,15 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :init
   (pulsar-global-mode 1)
   :hook
-  (next-error . 'pulsar-pulse-line)
+  (next-error . pulsar-pulse-line)
 
   ;; integration with the `consult' package
-  (consult-after-jump . 'pulsar-recenter-top)
-  (consult-after-jump . 'pulsar-reveal-entry)
+  (consult-after-jump . pulsar-recenter-top)
+  (consult-after-jump . pulsar-reveal-entry)
 
   ;; integration with the built-in `imenu'
-  (imenu-after-jump . 'pulsar-recenter-top)
-  (imenu-after-jump . 'pulsar-reveal-entry)
+  (imenu-after-jump . pulsar-recenter-top)
+  (imenu-after-jump . pulsar-reveal-entry)
   :config
   (add-to-list 'pulsar-pulse-functions 'ace-window)
   (add-to-list 'pulsar-pulse-functions 'meow-search))
@@ -1566,6 +1544,17 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
            :tab-width 4
            :right-divider-width 30
            :scroll-bar-width 8)))
+
+(use-package bufler
+  :straight (bufler :host github
+  		  :repo "alphapapa/bufler.el")
+  :init
+  (bufler-mode 1)
+  :bind
+  ("C-c b b" . 'bufler-switch-buffer)
+  :config
+  (require 'bufler-workspace-tabs)
+  )
 
 (use-package treesit
   :commands (treesit)
@@ -1947,11 +1936,21 @@ tasks."
 
 (use-package yuck-mode :straight t)
 
+(use-package ein
+  :straight t)
+
+(use-package python
+  :init
+  ;; Open python files in tree-sitter mode.
+  (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
+  :config
+  (setq python-indent-offset 4)
+  (setq python-indent-guess-indent-offset nil))
+
 ;; Integrate with nix-direnv
 ;; I am using devenv to manage project environment
 (use-package envrc
   :straight t
-  :disabled t
   :hook
   (after-init . envrc-global-mode)
   )

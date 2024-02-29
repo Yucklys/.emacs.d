@@ -1,7 +1,7 @@
 #+title Emacs Configuration
 #+PROPERTY: header-args:emacs-lisp :tangle ./init.el
 #+auto_tangle: t
-#+STARTUP: overview
+#+STARTUP: content
 
 * TOC                                                                   :TOC:
 - [[#early-init][Early init]]
@@ -38,6 +38,7 @@
   - [[#meow][Meow]]
   - [[#parenthesis][Parenthesis]]
   - [[#undo-redo][Undo-Redo]]
+  - [[#code-folding][Code folding]]
   - [[#rime][Rime]]
   - [[#smart-input-source][Smart Input Source]]
   - [[#quail-dvorak-layout][Quail Dvorak layout]]
@@ -69,6 +70,7 @@
   - [[#emoji][Emoji]]
   - [[#breadcrumb][Breadcrumb]]
   - [[#spacious-padding][Spacious padding]]
+  - [[#workspace][Workspace]]
 - [[#language][Language]]
   - [[#tree-sitter][Tree-sitter]]
   - [[#markdown][Markdown]]
@@ -85,6 +87,7 @@
   - [[#haskell][Haskell]]
   - [[#lua][Lua]]
   - [[#yuck][yuck]]
+  - [[#python][Python]]
 - [[#environment][Environment]]
 - [[#tools][Tools]]
   - [[#pdf][PDF]]
@@ -289,6 +292,10 @@ Use straight and use-package to manage packages. These two packages should be lo
     (setq make-backup-files nil)
     (setq backup-inhibited nil)
     (setq create-lockfiles nil)
+
+    ;; Default shell
+    (setq shell-file-name "/bin/sh")
+    (setq sh-shell-file "/bin/sh")
     )
 #+end_src
 ** Magit
@@ -655,8 +662,8 @@ Tiny template package alternative to ~yasnippet~. It is light-weight and use the
                                   :repo "svaante/lsp-snippet")
     :config
     ;; Initialize lsp-snippet -> tempel in eglot
-    (lsp-snippet-tempel-eglot-init)
-    ;; (lsp-snippet-tempel-lsp-mode-init)
+    ;; (lsp-snippet-tempel-eglot-init)
+    (lsp-snippet-tempel-lsp-mode-init)
     )
 #+end_src
 ** YASnippet
@@ -708,8 +715,7 @@ A very good package which provide a number of functions that enhance or add func
   (use-package consult
     :straight t
     :hook (completion-list-mode . consult-preview-at-point-mode)
-    :bind (("C-x b"   . 'my/consult-buffer)
-  	 ("C-x B"   . 'consult-buffer)
+    :bind (("C-x b"   . 'consult-buffer)
            ("C-c f i" . 'consult-imenu)
            ("C-c f b" . 'consult-bookmark)
            ("C-c f m" . 'consult-mark)
@@ -737,14 +743,7 @@ A very good package which provide a number of functions that enhance or add func
     ;; Use Consult to select xref locations with preview
     (setq xref-show-xrefs-function #'consult-xref
           xref-show-definitions-function #'consult-xref)
-
-    (defun my/consult-buffer ()
-      "Use `consult-project-buffer' when inside a project, otherwise use `consult-buffer'"
-      (interactive)
-      (if (project-current)
-  	(consult-project-buffer)
-        (consult-buffer)))
-      
+    
     :config
     (setq consult-buffer-filter `(,@consult-buffer-filter
   				"\\`\\*Async-native-compile-log\\*\\'"
@@ -893,7 +892,8 @@ Save recent opened file histoy. The default save file is configured by ~no-litte
                  (concat org-directory "index.org")))
 #+end_src
 ** Tab bar
-#+begin_src emacs-lisp
+*** Centaur tabs
+#+begin_src emacs-lisp :tangle no
   (use-package centaur-tabs
     :straight t
     :bind
@@ -1031,74 +1031,70 @@ Save recent opened file histoy. The default save file is configured by ~no-litte
   		  (tdr/fix-centaur-tabs)))
   	      (tdr/fix-centaur-tabs))
     )
-
-
-
-  ;; (use-package tab-bar
-  ;;   :bind
-  ;;   ("C-c b n" . 'tab-bar-switch-to-next-tab)
-  ;;   ("C-c b p" . 'tab-bar-switch-to-prev-tab)
-  ;;   ("C-c b N" . 'tab-bar-switch-to-last-tab)
-  ;;   ("C-c b b" . 'tab-bar-switch-to-tab)
-  ;;   ("C-c b k" . 'tab-bar-close-tab)
-  ;;   ("C-c b K" . 'tab-bar-close-tab-by-name)
-  ;;   :init
-  ;;   (tab-bar-mode +1)
-  ;;   :custom
-  ;;   ;; Only show the tab bar if there are 2 or more tabs
-  ;;   (tab-bar-show t)
-  ;;   ;; Do not show buttons
-  ;;   (tab-bar-new-button-show nil)
-  ;;   (tab-bar-close-button-show nil)
-  ;;   ;; Show hint index
-  ;;   ;; Open new tab rightmost
-  ;;   (tab-bar-new-tab-to "rightmost")
-
-  ;;   ;; Custom tab name and group format
-  ;;   (tab-bar-tab-name-format-function #'my/tab-bar-format)
-  ;;   (tab-bar-tab-name-function #'my/tab-bar-tab-name)
-  ;;   ;; (tab-bar-tab-group-format-function #'hyphon-tab-bar-tab-group-format-default)
-
-  ;;   ;; Open dashboard with new tab
-  ;;   (tab-bar-new-tab-choice #'dashboard-open)
-
-  ;;   ;; (tab-bar-format '(tab-bar-format-tabs-groups tab-bar-separator))
-  ;;   :config  
-  ;;   (defun my/tab-bar-format (tab i)
-  ;;     (let ((current-p (eq (car tab) 'current-tab)))
-  ;;       (propertize
-  ;;        (concat (if tab-bar-tab-hints (format "%d " i) "")
-  ;;                (alist-get 'name tab)
-  ;;                (or (and tab-bar-close-button-show
-  ;; 			(not (eq tab-bar-close-button-show
-  ;; 				 (if current-p 'non-selected 'selected)))
-  ;; 			tab-bar-close-button)
-  ;;                    ""))
-  ;;        'face (funcall tab-bar-tab-face-function tab))))
-
-  ;;   (defun my/tab-bar-tab-name ()
-  ;;     (let ((project (project-current)))
-  ;;       (concat (if project "[" "")
-  ;; 	      project
-  ;; 	      (if project "] " "")
-  ;; 	      (tab-bar-tab-name-current)))
-  ;;     )
-
-  ;;   (setq tab-bar-tab-hints nil)
-  ;;   (setq tab-bar-auto-width nil)
-  ;;   (setq tab-bar-format '(tab-bar-format-history
-  ;; 			 tab-bar-format-tabs
-  ;; 			 tab-bar-separator
-  ;; 			 tab-bar-format-align-right
-  ;; 			 tab-bar-format-global
-  ;; 			 ))
-
-  ;;   )
 #+end_src
+*** Tab bar mode
+#+begin_src emacs-lisp
+  (use-package tab-bar
+    :bind
+    ("C-c b n" . 'tab-bar-switch-to-next-tab)
+    ("C-c b p" . 'tab-bar-switch-to-prev-tab)
+    ("C-c b N" . 'tab-bar-switch-to-last-tab)
+    ("C-c b b" . 'tab-bar-switch-to-tab)
+    ("C-c b k" . 'tab-bar-close-tab)
+    ("C-c b K" . 'tab-bar-close-tab-by-name)
+    :init
+    (tab-bar-mode +1)
+    :custom
+    ;; Only show the tab bar if operating on tabs
+    (tab-bar-show t)
+    ;; Do not show buttons
+    (tab-bar-new-button-show nil)
+    (tab-bar-close-button-show nil)
+    ;; Show hint index
+    ;; Open new tab rightmost
+    (tab-bar-new-tab-to "rightmost")
 
-#+RESULTS:
-| (lambda (frame) (with-selected-frame frame (tdr/fix-centaur-tabs))) | cnfonts-set-font | doom-modeline-refresh-font-width-cache | meow-init-esc | (lambda (frame) (let ((old-frame (selected-frame)) (old-buffer (current-buffer))) (unwind-protect (progn (select-frame frame 'norecord) (tdr/fix-centaur-tabs)) (if (frame-live-p old-frame) (progn (select-frame old-frame 'norecord))) (if (buffer-live-p old-buffer) (progn (set-buffer old-buffer)))))) | pgtk-dnd-init-frame |
+    ;; Custom tab name and group format
+    ;; (tab-bar-tab-name-format-function #'my/tab-bar-format)
+    ;; (tab-bar-tab-name-function #'my/tab-bar-tab-name)
+    ;; (tab-bar-tab-group-format-function #'hyphon-tab-bar-tab-group-format-default)
 
+    ;; Open dashboard with new tab
+    (tab-bar-new-tab-choice #'dashboard-open)
+
+    ;; (tab-bar-format '(tab-bar-format-tabs-groups tab-bar-separator))
+    :config  
+    (defun my/tab-bar-format (tab i)
+      (let ((current-p (eq (car tab) 'current-tab)))
+        (propertize
+         (concat (if tab-bar-tab-hints (format "%d " i) "")
+                 (alist-get 'name tab)
+                 (or (and tab-bar-close-button-show
+  			(not (eq tab-bar-close-button-show
+  				 (if current-p 'non-selected 'selected)))
+  			tab-bar-close-button)
+                     ""))
+         'face (funcall tab-bar-tab-face-function tab))))
+
+    (defun my/tab-bar-tab-name ()
+      (let ((project (project-current)))
+        (concat (if project "[" "")
+  	      project
+  	      (if project "] " "")
+  	      (tab-bar-tab-name-current)))
+      )
+
+    (setq tab-bar-tab-hints nil)
+    (setq tab-bar-auto-width nil)
+    (setq tab-bar-format '(tab-bar-format-history
+  			 tab-bar-format-tabs
+  			 tab-bar-separator
+  			 tab-bar-format-align-right
+  			 tab-bar-format-global
+  			 ))
+
+    )
+#+end_src
 * Checker
 ** Flycheck
 Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more languages, has more features and probably faster (not tested myself).
@@ -1263,6 +1259,50 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
   					     "/git-rebase-todo\\'"))
     (undo-fu-session-global-mode))
 #+end_src
+** Code folding
+*** Hideshow
+#+begin_src emacs-lisp
+  (defun toggle-selective-display (column)
+        (interactive "P")
+        (set-selective-display
+         (or column
+             (unless selective-display
+               (1+ (current-column))))))
+
+  (defun toggle-hiding (column)
+        (interactive "P")
+        (if hs-minor-mode
+            (if (condition-case nil
+                    (hs-toggle-hiding)
+                  (error t))
+                (hs-show-all))
+          (toggle-selective-display column)))
+
+  (load-library "hideshow")
+  (global-set-key (kbd "C-+") 'toggle-hiding)
+  (global-set-key (kbd "C-\\") 'toggle-selective-display)
+
+  (add-hook 'c-mode-common-hook   'hs-minor-mode)
+  (add-hook 'emacs-lisp-mode-hook 'hs-minor-mode)
+  (add-hook 'java-mode-hook       'hs-minor-mode)
+  (add-hook 'lisp-mode-hook       'hs-minor-mode)
+  (add-hook 'perl-mode-hook       'hs-minor-mode)
+  (add-hook 'sh-mode-hook         'hs-minor-mode)
+
+#+end_src
+*** ts-fold
+#+begin_src emacs-lisp
+  (use-package ts-fold
+    :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
+    :defer t
+    :config
+    (custom-set-faces! '(ts-fold-replacement-face :foreground unspecified
+                                                  :box nil
+                                                  :inherit font-lock-comment-face
+                                                  :weight light))
+    (setq ts-fold-replacement "  [...]  ")
+    (ts-fold-mode +1))
+#+end_src
 ** Rime
 #+begin_src emacs-lisp
   (use-package rime
@@ -1346,7 +1386,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :straight t)
 #+end_src
 ** vterm
-#+begin_src emacs-lisp :tangle no
+#+begin_src emacs-lisp
   (use-package vterm
     :straight t
     :bind
@@ -1356,6 +1396,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     
     :config
     (setq vterm-kill-buffer-on-exit t)
+    (setq vterm-shell "nu")
     (add-hook 'vterm-mode-hook
               (lambda ()
                 (set (make-local-variable 'buffer-face-mode-face)
@@ -1382,12 +1423,12 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
                  (side . bottom)
                  ;;(dedicated . t) ;dedicated is supported in emacs27
                  (reusable-frames . visible)
-                 (window-height . 0.3)))
+                 (window-height . 0.4)))
     )
 #+end_src
 * LSP
 ** eglot
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle no
   (use-package eglot
     :init
     (setq eglot-sync-connect 1
@@ -1432,102 +1473,94 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     (eglot-x-setup))
 #+end_src
 ** lsp-mode
-#+begin_src emacs-lisp :tangle no
-  ;; (use-package lsp-mode
-  ;;   :straight t
-  ;;   :commands (lsp lsp-deferred)
-  ;;   :init
-  ;;   ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-  ;;   (setq lsp-keymap-prefix "C-c l")
-  ;;   (defun my/lsp-mode-setup-completion ()
-  ;;     (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-  ;;           '(orderless-fast))) ;; Configure orderless
+#+begin_src emacs-lisp
+  (use-package lsp-mode
+    :straight t
+    :init
+    ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+    (setq lsp-keymap-prefix "C-c l")
+
+    (defun my/lsp-mode-setup-completion ()
+      (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+            '(orderless))) ;; Configure orderless
     
-  ;;   ;; Combine lsp-capf, tempel and cape-file into same place.
-  ;;   (defun my/lsp-capf ()
-  ;;     (setq-local completion-at-point-functions
-  ;; 		(list (cape-super-capf
-  ;;                        #'tempel-expand
-  ;;                        #'lsp-completion-at-point
-  ;;                        #'cape-file))))
+    :bind
+    (:map lsp-mode-map
+  	("C-c c a" . 'lsp-execute-code-action)
+  	("C-c c d" . 'lsp-find-definition)
+  	("C-c c i" . 'lsp-find-implementation)
+  	("C-c c r" . 'lsp-rename))
 
-  ;;   :bind
-  ;;   (:map lsp-mode-map
-  ;; 	("C-c c a" . 'lsp-execute-code-action)
-  ;; 	("C-c c d" . 'lsp-find-definition)
-  ;; 	("C-c c i" . 'lsp-find-implementation)
-  ;; 	("C-c c r" . 'lsp-rename))
-
-  ;;   :custom
-  ;;   (lsp-completion-provider :none)
+    :custom
+    (lsp-completion-provider :none)
     
-  ;;   :hook
-  ;;   ;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-  ;;   ;; (XXX-mode . lsp)
-  ;;   ;; if you want which-key integration
-  ;;   (lsp-mode . lsp-enable-which-key-integration)
-  ;;   (lsp-mode . my/lsp-capf)
-  ;;   (lsp-completion-mode . my/lsp-mode-setup-completion)
-  ;;   (rustic-mode . 'lsp-deferred)
+    :hook
+    ;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+    ;; (XXX-mode . lsp)
+    ;; if you want which-key integration
+    (lsp-mode . lsp-enable-which-key-integration)
+    (lsp-completion-mode . my/lsp-mode-setup-completion)
+    (rustic-mode . 'lsp-deferred)
+    ((python-mode python-ts-mode) . 'lsp-deferred)
     
-  ;;   :config
-  ;;   ;; Disable default keybindings
-  ;;   (setq lsp-keymap-prefix nil)
-  ;;   (setq read-process-output-max (* 1024 1024)) ;; 1mb)
-  ;;   (setq lsp-log-io nil)
-  ;;   (setq lsp-enable-snippet nil)
+    :config
+    ;; Disable default keybindings
+    (setq lsp-keymap-prefix nil)
+    (setq read-process-output-max (* 1024 1024)) ;; 1mb)
+    (setq lsp-log-io nil)
+    (setq lsp-enable-snippet nil)
+    (setq lsp-pylsp-plugins-black-enabled t)
 
-  ;;   ;; Some features that have great potential to be slow.
-  ;;   ;; Suggested by Doom Emacs
-  ;;   (setq lsp-enable-folding nil
-  ;;         lsp-enable-text-document-color nil)
+    ;; Some features that have great potential to be slow.
+    ;; Suggested by Doom Emacs
+    (setq lsp-enable-folding nil
+          lsp-enable-text-document-color nil)
 
-  ;;   ;; Disable breadcrumbs
-  ;;   (setq lsp-headerline-breadcrumb-enable nil)
+    ;; Disable breadcrumbs
+    (setq lsp-headerline-breadcrumb-enable nil)
 
-  ;;   ;; Enable inlay hint
-  ;;   (setq lsp-inlay-hint-enable t)
-  ;;   )
+    ;; Enable inlay hint
+    (setq lsp-inlay-hint-enable t))
 
-  ;; (use-package lsp-ui
-  ;;   :hook (lsp-mode . lsp-ui-mode)
-  ;;   :straight t
-  ;;   :config
-  ;;   (setq lsp-ui-peek-enable t
-  ;;         lsp-ui-doc-max-height 8
-  ;;         lsp-ui-doc-max-width 72         ; 150 (default) is too wide
-  ;;         lsp-ui-doc-delay 0.75           ; 0.2 (default) is too naggy
-  ;;         lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
-  ;;         lsp-ui-doc-position 'at-point
-  ;;         lsp-ui-sideline-ignore-duplicate t
-  ;;         ;; Don't show symbol definitions in the sideline. They are pretty noisy,
-  ;;         ;; and there is a bug preventing Flycheck errors from being shown (the
-  ;;         ;; errors flash briefly and then disappear).
-  ;;         lsp-ui-sideline-show-hover nil
-  ;;         ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
-  ;;         ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
-  ;;         lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
-  ;;   )
+  (use-package lsp-ui
+    :hook (lsp-mode . lsp-ui-mode)
+    :straight t
+    :config
+    (setq lsp-ui-peek-enable t
+          lsp-ui-doc-max-height 8
+          lsp-ui-doc-max-width 72         ; 150 (default) is too wide
+          lsp-ui-doc-delay 0.75           ; 0.2 (default) is too naggy
+          lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
+          lsp-ui-doc-position 'at-point
+          lsp-ui-sideline-ignore-duplicate t
+          ;; Don't show symbol definitions in the sideline. They are pretty noisy,
+          ;; and there is a bug preventing Flycheck errors from being shown (the
+          ;; errors flash briefly and then disappear).
+          lsp-ui-sideline-show-hover nil
+          ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
+          ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
+          lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
+    )
 
-  ;; (use-package lsp-treemacs
-  ;;   :straight t
-  ;;   :after (lsp-mode treemacs doom-themes)
-  ;;   :config
-  ;;   (lsp-treemacs-sync-mode 1)
+  (use-package lsp-treemacs
+    :straight t
+    :after (lsp-mode treemacs doom-themes)
+    :config
+    (lsp-treemacs-sync-mode 1)
 
-  ;;   ;; Fix conflict of icon theme with doom themes
-  ;;   (with-eval-after-load 'lsp-treemacs
-  ;;     (doom-themes-treemacs-config))
-  ;;   )
+    ;; Fix conflict of icon theme with doom themes
+    (with-eval-after-load 'lsp-treemacs
+      (doom-themes-treemacs-config))
+    )
 
-  ;; (use-package consult-lsp
-  ;;   :straight t
-  ;;   :after (lsp-mode consult)
-  ;;   :bind
-  ;;   (:map lsp-mode-map
-  ;; 	([remap xref-find-apropos] . 'consult-lsp-symbols)
-  ;; 	)
-  ;;   )
+  (use-package consult-lsp
+    :straight t
+    :after (lsp-mode consult)
+    :bind
+    (:map lsp-mode-map
+  	([remap xref-find-apropos] . 'consult-lsp-symbols)
+  	)
+    )
 #+end_src
 ** lsp-bridge
 #+begin_src emacs-lisp
@@ -1913,15 +1946,15 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :init
     (pulsar-global-mode 1)
     :hook
-    (next-error . 'pulsar-pulse-line)
+    (next-error . pulsar-pulse-line)
 
     ;; integration with the `consult' package
-    (consult-after-jump . 'pulsar-recenter-top)
-    (consult-after-jump . 'pulsar-reveal-entry)
+    (consult-after-jump . pulsar-recenter-top)
+    (consult-after-jump . pulsar-reveal-entry)
     
     ;; integration with the built-in `imenu'
-    (imenu-after-jump . 'pulsar-recenter-top)
-    (imenu-after-jump . 'pulsar-reveal-entry)
+    (imenu-after-jump . pulsar-recenter-top)
+    (imenu-after-jump . pulsar-reveal-entry)
     :config
     (add-to-list 'pulsar-pulse-functions 'ace-window)
     (add-to-list 'pulsar-pulse-functions 'meow-search))
@@ -2016,6 +2049,19 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
              :tab-width 4
              :right-divider-width 30
              :scroll-bar-width 8)))
+#+end_src
+** Workspace
+#+begin_src emacs-lisp
+  (use-package bufler
+    :straight (bufler :host github
+  		    :repo "alphapapa/bufler.el")
+    :init
+    (bufler-mode 1)
+    :bind
+    ("C-c b b" . 'bufler-switch-buffer)
+    :config
+    (require 'bufler-workspace-tabs)
+    )
 #+end_src
 * Language
 ** Tree-sitter
@@ -2454,13 +2500,25 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 #+begin_src emacs-lisp
   (use-package yuck-mode :straight t)
 #+end_src
+** Python
+#+begin_src emacs-lisp
+  (use-package ein
+    :straight t)
+
+  (use-package python
+    :init
+    ;; Open python files in tree-sitter mode.
+    (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
+    :config
+    (setq python-indent-offset 4)
+    (setq python-indent-guess-indent-offset nil))
+#+end_src
 * Environment
 #+begin_src emacs-lisp
   ;; Integrate with nix-direnv
   ;; I am using devenv to manage project environment
   (use-package envrc
     :straight t
-    :disabled t
     :hook
     (after-init . envrc-global-mode)
     )
