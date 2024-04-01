@@ -1,7 +1,0 @@
-; -*-Lisp-*-
-
-nix-mode
-
-(set "{" p "};")
-(list "[" p "];")
-(string "\"" p "\";")

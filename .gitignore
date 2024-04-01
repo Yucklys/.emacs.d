@@ -3,3 +3,4 @@ var/
 elpa/
 straight/
 eln-cache/
+.cache/

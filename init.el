@@ -13,6 +13,7 @@
   (load bootstrap-file nil 'nomessage))
 
 (straight-use-package 'use-package) ; Load use-package
+(straight-use-package 'project) ; workaround for projectile + eglot
 
 ;; (setq use-package-compute-statistics t)
 
@@ -113,26 +114,33 @@
   ;; Default shell
   (setq shell-file-name "/bin/sh")
   (setq sh-shell-file "/bin/sh")
+
+  ;; Frame title
+  ;; Use current buffer name as frame title
+  (setq frame-title-format "%b - Emacs")
   )
 
 (use-package magit
   :straight t
   :bind
-  ("C-c v /"   ("Magit dispatch" . magit-dispatch)
-   "C-c v ."   ("Magit file dispatch" . magit-file-dispatch)
-   "C-c v '"   ("Forge dispatch" . forge-dispatch)
-   "C-c v g"   ("Magit status" . magit-status)
-   "C-c v G"   ("Magit status here" . magit-status-here)
-   "C-c v x"   ("Magit file delete" . magit-file-delete)
-   "C-c v B"   ("Magit blame" . magit-blame-addition)
-   "C-c v C"   ("Magit clone" . magit-clone)
-   "C-c v F"   ("Magit fetch" . magit-fetch)
-   "C-c v L"   ("Magit buffer log" . magit-log-buffer-file)
-   "C-c v S"   ("Git stage file" . magit-stage-file)
-   "C-c v U"   ("Git unstage file" . magit-unstage-file)
+  ("C-c g /"   ("Magit dispatch" . magit-dispatch)
+   "C-c g ."   ("Magit file dispatch" . magit-file-dispatch)
+   "C-c g '"   ("Forge dispatch" . forge-dispatch)
+   "C-c g g"   ("Magit status" . magit-status)
+   "C-c g G"   ("Magit status here" . magit-status-here)
+   "C-c g x"   ("Magit file delete" . magit-file-delete)
+   "C-c g B"   ("Magit blame" . magit-blame-addition)
+   "C-c g C"   ("Magit clone" . magit-clone)
+   "C-c g F"   ("Magit fetch" . magit-fetch)
+   "C-c g L"   ("Magit buffer log" . magit-log-buffer-file)
+   "C-c g S"   ("Git stage file" . magit-stage-file)
+   "C-c g U"   ("Git unstage file" . magit-unstage-file)
    )
   :config
-  (setq magit-bury-buffer-function #'magit-mode-quit-window)
+  (setq magit-display-buffer-function
+      #'magit-display-buffer-fullframe-status-v1)
+  (setq magit-bury-buffer-function
+      #'magit-restore-window-configuration)
   )
 
 ;; Set PATH for remote machine respect to user's PATH
@@ -410,9 +418,7 @@
   (tempel-trigger-prefix nil)
 
   :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
-         ("M-*" . tempel-insert)
-         ("M-]" . tempel-next)
-         ("M-[" . tempel-prev))
+         ("M-*" . tempel-insert))
 
   :init
 
@@ -446,15 +452,15 @@
   :after tempel)
 
 ;; Integrate with eglot/lsp-mode.
-(use-package lsp-snippet-tempel
-  :straight (lsp-snippet-tempel :type git
-                                :host github
-                                :repo "svaante/lsp-snippet")
-  :config
-  ;; Initialize lsp-snippet -> tempel in eglot
-  ;; (lsp-snippet-tempel-eglot-init)
-  (lsp-snippet-tempel-lsp-mode-init)
-  )
+;; (use-package lsp-snippet-tempel
+;;   :straight (lsp-snippet-tempel :type git
+;;                                 :host github
+;;                                 :repo "svaante/lsp-snippet")
+;;   :config
+;;   ;; Initialize lsp-snippet -> tempel in eglot
+;;   ;; (lsp-snippet-tempel-eglot-init)
+;;   (lsp-snippet-tempel-lsp-mode-init)
+;;   )
 
 (use-package isearch
   :defer t
@@ -555,48 +561,12 @@
   :hook
   (embark-collect-mode . consult-preview-at-point-mode))
 
-;; Integrate with Org roam
-(use-package consult-org-roam
-  :straight t
-  :after org-roam
-  :init
-  (require 'consult-org-roam)
-  (consult-org-roam-mode 1)
-  :custom
-  ;; Use `ripgrep' for searching with `consult-org-roam-search'
-  (consult-org-roam-grep-func #'consult-ripgrep)
-  ;; Configure a custom narrow key for `consult-buffer'
-  (consult-org-roam-buffer-narrow-key ?r)
-  ;; Display org-roam buffers right after non-org-roam buffers
-  ;; in consult-buffer (and not down at the bottom)
-  (consult-org-roam-buffer-after-buffers t)
-  :config
-  ;; Eventually suppress previewing for certain functions
-  ;; (consult-customize
-  ;;  consult-org-roam-forward-links
-  ;;  :preview-key (kbd "M-."))
-  :bind
-  ;; Define some convenient keybindings as an addition
-  (("C-c n f" . consult-org-roam-file-find)
-   ("C-c n b" . consult-org-roam-backlinks)
-   ("C-c n l" . consult-org-roam-forward-links)
-   ("C-c n s" . consult-org-roam-search)))
-
 ;; Integrate with flycheck
 (use-package consult-flycheck
   :straight t
   :after (flycheck consult)
   :bind
   ("C-c e e" . 'consult-flycheck))
-
-;; Integrate with eglot
-(use-package consult-eglot
-  :straight t
-  :after (eglot consult)
-  :bind
-  (:map eglot-mode-map
-      ([remap xref-find-apropos] . #'consult-eglot-symbols))
-  )
 
 ;; Integrate with projectile
 (use-package consult-projectile
@@ -649,65 +619,145 @@
   (add-to-list 'recentf-exclude
                (concat org-directory "index.org")))
 
-(use-package tab-bar
+(use-package centaur-tabs
+  :straight t
   :bind
-  ("C-c b n" . 'tab-bar-switch-to-next-tab)
-  ("C-c b p" . 'tab-bar-switch-to-prev-tab)
-  ("C-c b N" . 'tab-bar-switch-to-last-tab)
-  ("C-c b b" . 'tab-bar-switch-to-tab)
-  ("C-c b k" . 'tab-bar-close-tab)
-  ("C-c b K" . 'tab-bar-close-tab-by-name)
-  :init
-  (tab-bar-mode +1)
-  :custom
-  ;; Only show the tab bar if operating on tabs
-  (tab-bar-show t)
-  ;; Do not show buttons
-  (tab-bar-new-button-show nil)
-  (tab-bar-close-button-show nil)
-  ;; Show hint index
-  ;; Open new tab rightmost
-  (tab-bar-new-tab-to "rightmost")
+  ("C-c t n" . 'centaur-tabs-forward-tab)
+  ("C-c t p" . 'centaur-tabs-backward-tab)
+  ("C-c t N" . 'centaur-tabs-select-end-tab)
+  ("C-c t P" . 'centaur-tabs-select-beg-tab)
+  ("C-c t s" . 'centaur-tabs-switch-group)
+  ("C-c t j" . 'centaur-tabs-ace-jump)
+  :hook
+  (org-src-mode . centaur-tabs-local-mode) ; disable bar in org edit src
+  (dashboard-mode . centaur-tabs-local-mode)
+  (term-mode . centaur-tabs-local-mode)
+  (vterm-mode . centaur-tabs-local-mode)
+  (org-agenda-mode . centaur-tabs-local-mode)
+  (calendar-mode . centaur-tabs-local-mode)
+  (elfeed-search-mode . centaur-tabs-local-mode)
+  ((telega-root-mode
+  	      telega-chat-mode) . centaur-tabs-local-mode)
 
-  ;; Custom tab name and group format
-  ;; (tab-bar-tab-name-format-function #'my/tab-bar-format)
-  ;; (tab-bar-tab-name-function #'my/tab-bar-tab-name)
-  ;; (tab-bar-tab-group-format-function #'hyphon-tab-bar-tab-group-format-default)
+  :init        
+  (defun centaur-tabs-buffer-groups ()
+    "`centaur-tabs-buffer-groups' control buffers' group rules.
 
-  ;; Open dashboard with new tab
-  (tab-bar-new-tab-choice #'dashboard-open)
+Group centaur-tabs with mode if buffer is derived from `eshell-mode' `emacs-lisp-mode' `dired-mode' `org-mode' `magit-mode'.
+All buffer name start with * will group to \"Emacs\".
+Other buffer group by `centaur-tabs-get-group-name' with project name."
+    (list
+     (cond
+      ((or (string-equal "*" (substring (buffer-name) 0 1))
+           (memq major-mode '(magit-process-mode
+                              magit-status-mode
+                              magit-diff-mode
+                              magit-log-mode
+                              magit-file-mode
+                              magit-blob-mode
+                              magit-blame-mode
+                              )))
+       "Emacs")
+      ((derived-mode-p 'prog-mode)
+       "Editing")
+      ((derived-mode-p '(eshell-mode
+  		       vterm-mode))
+       "Term")
+      ((derived-mode-p 'dired-mode)
+       "Dired")
+      ((memq major-mode '(helpful-mode
+                          help-mode))
+       "Help")
+      ((memq major-mode '(org-mode
+  			org-roam-mode
+                          org-agenda-clockreport-mode
+                          org-src-mode
+                          org-agenda-mode
+                          org-beamer-mode
+                          org-indent-mode
+                          org-bullets-mode
+                          org-cdlatex-mode
+                          org-agenda-log-mode
+                          diary-mode))
+       "Org")
+      (t
+       (centaur-tabs-get-group-name (current-buffer))))))
 
-  ;; (tab-bar-format '(tab-bar-format-tabs-groups tab-bar-separator))
-  :config  
-  (defun my/tab-bar-format (tab i)
-    (let ((current-p (eq (car tab) 'current-tab)))
-      (propertize
-       (concat (if tab-bar-tab-hints (format "%d " i) "")
-               (alist-get 'name tab)
-               (or (and tab-bar-close-button-show
-  		      (not (eq tab-bar-close-button-show
-  			       (if current-p 'non-selected 'selected)))
-  		      tab-bar-close-button)
-                   ""))
-       'face (funcall tab-bar-tab-face-function tab))))
+  (defun centaur-tabs-hide-tab (x)
+    "Do no to show buffer X in tabs."
+    (let ((name (format "%s" x)))
+      (or
+       ;; Current window is not dedicated window.
+       (window-dedicated-p (selected-window))
 
-  (defun my/tab-bar-tab-name ()
-    (let ((project (project-current)))
-      (concat (if project "[" "")
-  	    project
-  	    (if project "] " "")
-  	    (tab-bar-tab-name-current)))
-    )
+       ;; Buffer name not match below blacklist.
+       (string-prefix-p "*epc" name)
+       (string-prefix-p "*helm" name)
+       (string-prefix-p "*Helm" name)
+       (string-prefix-p "*Compile-Log*" name)
+       (string-prefix-p "*lsp" name)
+       (string-prefix-p "*company" name)
+       (string-prefix-p "*Flycheck" name)
+       (string-prefix-p "*tramp" name)
+       (string-prefix-p " *Mini" name)
+       (string-prefix-p "*help" name)
+       (string-prefix-p "*straight" name)
+       (string-prefix-p " *temp" name)
+       (string-prefix-p "*Help" name)
+       (string-prefix-p "*mybuf" name)
 
-  (setq tab-bar-tab-hints nil)
-  (setq tab-bar-auto-width nil)
-  (setq tab-bar-format '(tab-bar-format-history
-  		       tab-bar-format-tabs
-  		       tab-bar-separator
-  		       tab-bar-format-align-right
-  		       tab-bar-format-global
-  		       ))
+       ;; Is not magit buffer.
+       (and (string-prefix-p "magit" name)
+            (not (file-name-extension name)))
+       )))
+  (centaur-tabs-mode t)
+  (centaur-tabs-headline-match)
 
+  :config
+  ;; Tab appearence
+  (setq centaur-tabs-style "bar")
+  (setq centaur-tabs-height 32)
+  (setq centaur-tabs-set-icons t)
+  (setq centaur-tabs-icon-type 'nerd-icons)
+  (setq centaur-tabs-set-bar 'under)
+  (setq x-underline-at-descent-line t)
+  (setq centaur-tabs-set-close-button nil)
+  (setq centaur-tabs-set-modified-marker t)
+
+  ;; Customize
+  (setq centaur-tabs-cycle-scope 'tabs) ; tabs or groups
+  (setq centaur-tabs--buffer-show-groups nil)
+  (centaur-tabs-enable-buffer-reordering)
+  (setq centaur-tabs-adjust-buffer-order t)
+
+  ;; Integration
+  (centaur-tabs-group-by-projectile-project)
+
+  ;; Custome face
+  ;; (set-face-attribute 'centaur-tabs-selected nil
+  ;; 		      :inherit 'centaur-tabs-selected
+  ;; 		      :underline "#81A1C1")
+  ;; (set-face-attribute 'centaur-tabs-selected-modified nil
+  ;; 		      :inherit 'centaur-tabs-selected
+  ;; 		      :foreground "#8FBCBB"
+  ;; 		      :underline "#81A1C1")
+  ;; (set-face-attribute 'centaur-tabs-default nil
+  ;; 		      :inherit 'centaur-tabs-default
+  ;; 		      :background "#3B4252")
+  )
+
+(defun tdr/fix-centaur-tabs ()
+  (centaur-tabs-mode -1)
+  (centaur-tabs-mode)
+  (centaur-tabs-headline-match)
+  )
+
+(if (daemonp)
+    (add-hook 'after-make-frame-functions
+  	    (lambda (frame)
+  	      (with-selected-frame frame
+  		(tdr/fix-centaur-tabs)))
+  	    (tdr/fix-centaur-tabs))
   )
 
 (use-package flycheck
@@ -719,6 +769,124 @@
                                 '(emacs-lisp
                                   emacs-lisp-checkdoc))))
   :init (global-flycheck-mode))
+
+(use-package xref
+  :config
+  (setq xref-search-program 'ripgrep
+      xref-history-storage 'xref-window-local-history))
+
+(use-package lsp-mode
+  :straight t
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+
+  (defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))) ;; Configure orderless
+
+  :bind
+  (:map lsp-mode-map
+      ("C-c c a" . 'lsp-execute-code-action)
+      ("C-c c d" . 'lsp-find-definition)
+      ("C-c c i" . 'lsp-find-implementation)
+      ("C-c c r" . 'lsp-rename))
+
+  :custom
+  (lsp-completion-provider :none)
+
+  :hook
+  ;; replace XXX-mode with concrete major-mode(e. g. python-mode)
+  ;; (XXX-mode . lsp)
+  ;; if you want which-key integration
+  (lsp-mode . lsp-enable-which-key-integration)
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
+  (rust-ts-mode . 'lsp-deferred)
+  ((python-mode python-ts-mode) . 'lsp-deferred)
+
+  :config
+  ;; Disable default keybindings
+  (setq lsp-keymap-prefix nil)
+  (setq read-process-output-max (* 1024 1024)) ;; 1mb)
+  (setq lsp-log-io nil)
+  (setq lsp-enable-snippet nil)
+  (setq lsp-pylsp-plugins-black-enabled t)
+
+  ;; Some features that have great potential to be slow.
+  ;; Suggested by Doom Emacs
+  (setq lsp-enable-folding nil
+        lsp-enable-text-document-color nil)
+
+  ;; Disable breadcrumbs
+  (setq lsp-headerline-breadcrumb-enable nil)
+
+  ;; Enable inlay hint
+  (setq lsp-inlay-hint-enable t))
+
+(use-package lsp-ui
+  :hook (lsp-mode . lsp-ui-mode)
+  :straight t
+  :bind
+  ([remap xref-find-definitions] . 'lsp-ui-peek-find-definitions)
+  ([remap xref-find-references] . 'lsp-ui-peek-find-references)
+  :config
+  (setq lsp-ui-peek-enable t
+        lsp-ui-doc-max-height 8
+        lsp-ui-doc-max-width 72         ; 150 (default) is too wide
+        lsp-ui-doc-delay 0.75           ; 0.2 (default) is too naggy
+        lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
+        lsp-ui-doc-position 'at-point
+        lsp-ui-sideline-ignore-duplicate t
+        ;; Don't show symbol definitions in the sideline. They are pretty noisy,
+        ;; and there is a bug preventing Flycheck errors from being shown (the
+        ;; errors flash briefly and then disappear).
+        lsp-ui-sideline-show-hover nil
+        ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
+        ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
+        lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
+  )
+
+(use-package lsp-treemacs
+  :straight t
+  :after (lsp-mode treemacs doom-themes)
+  :config
+  (lsp-treemacs-sync-mode 1)
+
+  ;; Fix conflict of icon theme with doom themes
+  (with-eval-after-load 'lsp-treemacs
+    (doom-themes-treemacs-config))
+  )
+
+(use-package consult-lsp
+  :straight t
+  :after (lsp-mode consult)
+  :bind
+  (:map lsp-mode-map
+      ([remap xref-find-apropos] . 'consult-lsp-symbols)
+      )
+  )
+
+(use-package copilot
+  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("dist" "*.el"))
+  :when (executable-find "node")
+  :defer t
+  :hook ((prog-mode org-mode markdown-mode) . 'copilot-mode)
+  :bind (:map copilot-mode-map
+  	    ("C-e" . '+copilot-complete)
+  	    ("M-f" . '+copilot-complete-word))
+  :config
+  (setq copilot-indent-offset-warning-disable t)
+
+  (defun +copilot-complete ()
+    (interactive)
+    (or (copilot-accept-completion)
+      (move-end-of-line 1)))
+
+  (defun +copilot-complete-word ()
+    (interactive)
+    (or (copilot-accept-completeion-by-word 1)
+      (forward-word)))
+  )
 
 (use-package meow
   :straight t
@@ -889,6 +1057,8 @@
 (add-hook 'lisp-mode-hook       'hs-minor-mode)
 (add-hook 'perl-mode-hook       'hs-minor-mode)
 (add-hook 'sh-mode-hook         'hs-minor-mode)
+;; Enable hideshow by default for all prog mode
+(add-hook 'prog-mode-hook 'hs-minor-mode)
 
 (use-package ts-fold
   :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
@@ -1011,105 +1181,6 @@
                (window-height . 0.4)))
   )
 
-(use-package lsp-mode
-  :straight t
-  :init
-  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-  (setq lsp-keymap-prefix "C-c l")
-
-  (defun my/lsp-mode-setup-completion ()
-    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-          '(orderless))) ;; Configure orderless
-
-  :bind
-  (:map lsp-mode-map
-      ("C-c c a" . 'lsp-execute-code-action)
-      ("C-c c d" . 'lsp-find-definition)
-      ("C-c c i" . 'lsp-find-implementation)
-      ("C-c c r" . 'lsp-rename))
-
-  :custom
-  (lsp-completion-provider :none)
-
-  :hook
-  ;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-  ;; (XXX-mode . lsp)
-  ;; if you want which-key integration
-  (lsp-mode . lsp-enable-which-key-integration)
-  (lsp-completion-mode . my/lsp-mode-setup-completion)
-  (rustic-mode . 'lsp-deferred)
-  ((python-mode python-ts-mode) . 'lsp-deferred)
-
-  :config
-  ;; Disable default keybindings
-  (setq lsp-keymap-prefix nil)
-  (setq read-process-output-max (* 1024 1024)) ;; 1mb)
-  (setq lsp-log-io nil)
-  (setq lsp-enable-snippet nil)
-  (setq lsp-pylsp-plugins-black-enabled t)
-
-  ;; Some features that have great potential to be slow.
-  ;; Suggested by Doom Emacs
-  (setq lsp-enable-folding nil
-        lsp-enable-text-document-color nil)
-
-  ;; Disable breadcrumbs
-  (setq lsp-headerline-breadcrumb-enable nil)
-
-  ;; Enable inlay hint
-  (setq lsp-inlay-hint-enable t))
-
-(use-package lsp-ui
-  :hook (lsp-mode . lsp-ui-mode)
-  :straight t
-  :config
-  (setq lsp-ui-peek-enable t
-        lsp-ui-doc-max-height 8
-        lsp-ui-doc-max-width 72         ; 150 (default) is too wide
-        lsp-ui-doc-delay 0.75           ; 0.2 (default) is too naggy
-        lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
-        lsp-ui-doc-position 'at-point
-        lsp-ui-sideline-ignore-duplicate t
-        ;; Don't show symbol definitions in the sideline. They are pretty noisy,
-        ;; and there is a bug preventing Flycheck errors from being shown (the
-        ;; errors flash briefly and then disappear).
-        lsp-ui-sideline-show-hover nil
-        ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
-        ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
-        lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
-  )
-
-(use-package lsp-treemacs
-  :straight t
-  :after (lsp-mode treemacs doom-themes)
-  :config
-  (lsp-treemacs-sync-mode 1)
-
-  ;; Fix conflict of icon theme with doom themes
-  (with-eval-after-load 'lsp-treemacs
-    (doom-themes-treemacs-config))
-  )
-
-(use-package consult-lsp
-  :straight t
-  :after (lsp-mode consult)
-  :bind
-  (:map lsp-mode-map
-      ([remap xref-find-apropos] . 'consult-lsp-symbols)
-      )
-  )
-
-(use-package lsp-bridge
-  :straight '(lsp-bridge :type git :host github :repo "manateelazycat/lsp-bridge"
-  		       :files (:defaults "*.el" "*.py" "acm" "core" "langserver" "multiserver" "resources")
-  		       :build (:not compile))
-  :disabled t
-  :init
-  (global-lsp-bridge-mode)
-  :config
-  (setq acm-enable-copilot t
-      acm-enable-preview nil))
-
 ;; Show my keybindings
 (use-package which-key
   :straight t
@@ -1164,7 +1235,6 @@ targets."
 ;; Better project management
 (use-package projectile
   :straight t
-  :disabled t
   :custom
   (projectile-sort-order 'recently-active)
   (projectile-project-search-path '("~/Projects/"))
@@ -1297,27 +1367,40 @@ targets."
 (add-hook 'minibuffer-setup-hook #'doom-defer-garbage-collection-h)
 (add-hook 'minibuffer-exit-hook #'doom-restore-garbage-collection-h)
 
-(use-package doom-themes
+(use-package ef-themes
   :straight t
+      :custom-face
+      (variable-pitch ((t (:family "LXGW WenKai"))))
+      (fixed-pitch ((t (:family "Mono Lisa"))))
   :config
-  ;; Global settings (defaults)
-  (setq doom-themes-enable-bold t    ; if nil, bold is universally disabled
-        doom-themes-enable-italic t) ; if nil, italics is universally disabled
-  (setq custom-safe-themes t)
-  (load-theme 'doom-nord t)
+  (setq ef-themes-to-toggle '(ef-maris-light ef-maris-dark))
+  (setq ef-themes-mixed-fonts t
+  			      ef-themes-variable-pitch-ui t)
+      (setq ef-themes-headings ; read the manual's entry or the doc string
+      '((0 variable-pitch light)
+        (1 variable-pitch light)
+        (2 variable-pitch regular)
+        (3 variable-pitch regular)
+        (4 variable-pitch regular)
+        (5 variable-pitch) ; absence of weight means `bold'
+        (6 variable-pitch)
+        (7 variable-pitch)
+        (t variable-pitch)))
+  )
 
-  ;; Enable flashing mode-line on errors
-  (doom-themes-visual-bell-config)
-  ;; Enable custom neotree theme (all-the-icons must be installed!)
-  ;; (doom-themes-neotree-config)
-  ;; or for treemacs users
-  (setq doom-themes-treemacs-theme "doom-colors") ; use "doom-colors" for less minimal icon theme
-  (doom-themes-treemacs-config)
-  ;; Corrects (and improves) org-mode's native fontification.
-  (doom-themes-org-config))
+(defun yu/load-theme ()
+  	      (if (string= (format-time-string "%p") "AM")
+  		      (load-theme 'ef-maris-light t)
+  	      (load-theme 'ef-maris-dark t)))
+
+(if (daemonp)
+  (add-hook 'server-after-make-frame-hook
+       #'yu/load-theme)
+ (yu/load-theme))
 
 (use-package doom-modeline
   :straight t
+      :defer t
   :init (doom-modeline-mode 1)
   :custom
   (doom-modeline-support-imenu t)
@@ -1472,8 +1555,6 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   ("C--" . #'cnfonts-decrease-fontsize)
   ("C-=" . #'cnfonts-increase-fontsize)
   :config
-  (setq cnfonts-profiles
-      '("program" "org-mode" "read-book"))
   (setq cnfonts-use-face-font-rescale t)
   (setq cnfonts-personal-fontnames '(("Mono Lisa")
   				   ("LXGW WenKai Mono" "LXGW WenKai"
@@ -1491,32 +1572,47 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (use-package ligature
   :straight t
   :config
-  ;; Enable the "www" ligature in every possible major mode
-  (ligature-set-ligatures 't '("www"))
-  ;; Enable traditional ligature support in eww-mode, if the
-  ;; `variable-pitch' face supports it
-  (ligature-set-ligatures 'eww-mode '("ff" "fi" "ffi"))
-  ;; Enable all Cascadia Code ligatures in programming modes
-  (ligature-set-ligatures 'prog-mode '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
-                                       ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
-                                       "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
-                                       "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
-                                       "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
-                                       "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
-                                       "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
-                                       "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
-                                       ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
-                                       "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
-                                       "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
-                                       "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
-                                       "\\\\" "://"))
+  (ligature-set-ligatures 'prog-mode '("-->" "->" "->>" "-<" "--<"
+                                       "-~" "]#" ".-" "!=" "!=="
+                                       "#(" "#{" "#[" "#_" "#_("
+                                       "/=" "/==" "|||" "||" ;; "|"
+                                       "==" "===" "==>" "=>" "=>>"
+                                       "=<<" "=/" ">-" ">->" ">="
+                                       ">=>" "<-" "<--" "<->" "<-<"
+                                       "<!--" "<|" "<||" "<|||"
+                                       "<|>" "<=" "<==" "<==>" "<=>"
+                                       "<=<" "<<-" "<<=" "<~" "<~>"
+                                       "<~~" "~-" "~@" "~=" "~>"
+                                       "~~" "~~>" ".=" "..=" "---"
+                                       "{|" "[|" ".."  "..."  "..<"
+                                       ".?"  "::" ":::" "::=" ":="
+                                       ":>" ":<" ";;" "!!"  "!!."
+                                       "!!!"  "?."  "?:" "??"  "?="
+                                       "**" "***" "*>" "*/" "#:"
+                                       "#!"  "#?"  "##" "###" "####"
+                                       "#=" "/*" "/>" "//" "///"
+                                       "&&" "|}" "|]" "$>" "++"
+                                       "+++" "+>" "=:=" "=!=" ">:"
+                                       ">>" ">>>" "<:" "<*" "<*>"
+                                       "<$" "<$>" "<+" "<+>" "<>"
+                                       "<<" "<<<" "</" "</>" "^="
+                                       "%%" "'''" "\"\"\"" ))
+  ;; Enables ligature checks globally in all buffers. You can also do it
+  ;; per mode with `ligature-mode'.
+  (global-ligature-mode t))
 
-  (global-ligature-mode t)
-  )
+;; Use serif font in text mode
+(use-package variable-pitch-mode
+      :hook
+      (text-mode . variable-pitch-mode)
+      )
 
 (use-package emojify
   :straight t
-  :hook (after-init . global-emojify-mode))
+      :hook
+      ((telega-root-mode
+  	      telega-chat-mode) . emojify-mode)
+  )
 
 (use-package breadcrumb
   :straight t
@@ -1552,27 +1648,20 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (bufler-mode 1)
   :bind
   ("C-c b b" . 'bufler-switch-buffer)
+  ("C-c b l" . 'bufler)
+      ("C-c b s" . 'bufler-workspace-focus-buffer)
+      ("C-c b S" . 'bufler-workspace-frame-set)
   :config
   (require 'bufler-workspace-tabs)
   )
 
 (use-package treesit
-  :commands (treesit)
+  :config
   )
 
-(use-package tree-sitter-module
-  :after treesit
-  :defer t
-  :straight (tree-sitter-module
-             :type git :host github
-             :repo "casouri/tree-sitter-module"
-             :pre-build (("./batch.sh"))
-             :files ("dist/*.so" "dist/*.dll" "dist/*.dylib"))
-  :init
-  ;; Search for tree-sitter modules in this packages build directory.
-  (with-eval-after-load 'treesit
-    (add-to-list 'treesit-extra-load-path
-                 (straight--build-dir "tree-sitter-module"))))
+(use-package tree-sitter-langs
+  :straight t
+  :after treesit)
 
 (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
   			      dockerfile-ts-mode))
@@ -1679,172 +1768,12 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
                                  "** TODO %?\n")
                                 )))
 
-(use-package vulpea :straight t)
-
-(use-package org-roam
-  :straight t
-  :hook
-  (org-load . org-roam-db-autosync-mode)
-  :bind
-  (("C-c n r" . org-roam-buffer-toggle)
-   ("C-c n f" . org-roam-node-find)
-   ("C-c n g" . 'org-roam-ui-open)
-   ("C-c n i" . org-roam-node-insert)
-   ("C-c n c" . org-roam-capture)
-   ;; Dailies
-   ("C-c n d d" . org-roam-dailies-capture-today)
-   ("C-c n d t" . 'org-roam-dailies-find-today)
-   ("C-c n d j" . 'org-roam-dailies-find-date))
-  :custom
-  (org-roam-directory "~/org/roam")
-  (org-roam-dailies-directory "50 Journals")
-  :config
-  ;; Roam buffer now act as a side window
-  (add-to-list 'display-buffer-alist
-               '("\\*org-roam\\*"
-                 (display-buffer-in-side-window)
-                 (side . right)
-                 (slot . 0)
-                 (window-width . 0.28)
-                 (window-parameters . ((no-other-window . t)
-                                       (no-delete-other-windows . t)))))
-
-  (setq org-roam-completion-everywhere t)
-  (setq org-roam-node-display-template (concat "${title:*} " (propertize "${tags:10}" 'face 'org-tag)))
-  (setq org-roam-dailies-capture-templates
-        '(("d" "default" entry "* %<%H:%M %p>\n%?"
-           :if-new (file+datetree "%<%Y-%m>.org"
-                                  'day)
-           )))
-  (setq org-roam-capture-templates '(
-                                     ("n" "Note Group")
-                                     ("np" "Paper Note" plain
-                                      "* Related Work\n%?\n* Argument\n\n* Experiment\n\n* Conclusion"
-                                      :if-new (file+head "10 Areas/12 ${slug}.org" "#+title: ${title}\n")
-                                      :unnarrowed t)
-                                     ("nr" "Reading" entry
-                                      "** %?"
-                                      :if-new (file+head+olp "10 Areas/11 ${slug}.org" "#+title: ${title}\n* Intro\n\n" ("Highlights"))
-                                      :unnarrowed t)
-                                     ("c" "Card Group")
-                                     ("cc" "Concept" plain
-                                      "* Source\n\n%?\n\n"
-                                      :if-new (file+head "00 Cards/01 ${slug}.org" "#+title: ${title}\n")
-                                      :unnarrowed t)
-                                     ("cg" "Game" plain
-                                      "* Info\n\n%?\n\n* Commit"
-                                      :if-new (file+head "00 Cards/02 ${slug}.org" "#+title: ${title}\n")
-                                      :unnarrowed t)
-                                     ("ct" "Topic" plain
-                                      "%?"
-                                      :if-new (file+head "00 Cards/00 ${slug}.org" "#+title: ${title}\n")
-                                      :unnarrowed t)
-                                     ("p" "Project" plain
-                                      "%?"
-                                      :if-new (file+head "20 Projects/20 ${slug}.org" "#+title: ${title}\n#+filetag:\n")
-                                      :unnarrowed t)
-                                     ))
-  (setq org-roam-capture-ref-templates '(
-                                         ("r" "ref" plain "* Summary\n%?" :if-new
-                                          (file+head "00 Cards/03 ${slug}.org" "#+title: ${title}")
-                                          :unnarrowed t)
-                                         ))
-
-
-  ;; Integrate org-agenda with org-roam
-  (add-to-list 'org-tags-exclude-from-inheritance "agenda")
-
-  (defun vulpea-project-p ()
-    "Return non-nil if current buffer has any todo entry.
-
-TODO entries marked as done are ignored, meaning the this
-function returns nil if current buffer contains only completed
-tasks."
-    (seq-find                                 ; (3)
-     (lambda (type)
-       (eq type 'todo))
-     (org-element-map                         ; (2)
-       (org-element-parse-buffer 'headline) ; (1)
-       'headline
-       (lambda (h)
-       (org-element-property :todo-type h)))))
-
-  (defun vulpea-project-update-tag ()
-    "Update PROJECT tag in the current buffer."
-    (when (and (not (active-minibuffer-window))
-               (vulpea-buffer-p))
-      (save-excursion
-        (goto-char (point-min))
-        (let* ((tags (vulpea-buffer-tags-get))
-               (original-tags tags))
-          (if (vulpea-project-p)
-              (setq tags (cons "agenda" tags))
-            (setq tags (remove "agenda" tags)))
-
-          ;; cleanup duplicates
-          (setq tags (seq-uniq tags))
-
-          ;; update tags if changed
-          (when (or (seq-difference tags original-tags)
-                    (seq-difference original-tags tags))
-            (apply #'vulpea-buffer-tags-set tags))))))
-
-  (defun vulpea-buffer-p ()
-    "Return non-nil if the currently visited buffer is a note."
-    (and buffer-file-name
-       (string-prefix-p
-          (expand-file-name (file-name-as-directory org-roam-directory))
-          (file-name-directory buffer-file-name))))
-
-  (defun vulpea-project-files ()
-    "Return a list of note files containing 'agenda' tag." ;
-    (seq-uniq
-     (seq-map
-      #'car
-      (org-roam-db-query
-       [:select [nodes:file]
-  	      :from tags
-  	      :left-join nodes
-  	      :on (= tags:node-id nodes:id)
-  	      :where (like tag (quote "%\"agenda\"%"))]))))
-
-  (defun vulpea-agenda-files-update (&rest _)
-    "Update the value of `org-agenda-files'."
-    (setq org-agenda-files (vulpea-project-files)))
-
-  (add-hook 'find-file-hook #'vulpea-project-update-tag)
-  (add-hook 'before-save-hook #'vulpea-project-update-tag)
-
-  (advice-add 'org-agenda :before #'vulpea-agenda-files-update)
-  (advice-add 'org-todo-list :before #'vulpea-agenda-files-update)
-  )
-
-(use-package websocket
-  :straight t
-  :after org-roam)
-
-(use-package org-roam-ui
-  :straight
-  (:host github :repo "org-roam/org-roam-ui" :branch "main" :files ("*.el" "out"))
-  ;; :hook
-  ;; (org-roam-mode . org-roam-ui-mode)
-  :after org-roam
-  ;;         normally we'd recommend hooking orui after org-roam, but since org-roam does not have
-  ;;         a hookable mode anymore, you're advised to pick something yourself
-  ;;         if you don't care about startup time, use
-  ;;  :hook (after-init . org-roam-ui-mode)
-  :config
-  (setq org-roam-ui-sync-theme t
-        org-roam-ui-follow t
-        org-roam-ui-update-on-save t
-        org-roam-ui-open-on-start t))
-
-(use-package org-roam-protocol
-  :after org-roam)
-
 (use-package denote
   :straight t
   :defer t
+  :bind
+  ("C-c n n" . 'denote)
+  ("C-c n f" . 'denote-open-or-create)
   :config
   (setq denote-directory (file-name-concat org-directory "denote/"))
   )
@@ -1875,15 +1804,16 @@ tasks."
   (org-mode . toc-org-mode)
   (markdown-mode . toc-org-mode))
 
+(use-package org-noter
+      :straight t)
+
 (use-package rustic
   :straight t
   :mode ("\\.rs$" . rustic-mode)
   :config
-  (setq rustic-lsp-client 'eglot)
-  ;; (setq rustic-indent-method-chain t)
-  ;; (setq rust-prettify-symbols-alist nil)
-  (setq rustic-format-trigger 'on-save)
-  ;; (setq rustic-format-on-save t)
+  (setq rustic-lsp-client 'lsp-mode)
+  (setq rustic-indent-method-chain t)
+  (setq rustic-format-on-save t)
   (setq rustic-rustfmt-bin-remote "rustfmt")
   )
 
@@ -1893,15 +1823,18 @@ tasks."
 (add-to-list 'auto-mode-alist
   	   '("\\.ya?ml$" . yaml-ts-mode))
 
+(use-package yaml-ts-mode
+  :custom
+  (tab-width 2)
+  )
+
 (use-package nix-mode
   :straight t
   :mode "\\.nix\\'")
 
-(use-package nushell-mode
-  :straight (nushell-mode
-  	   :type git :host github
-  	   :repo "mrkkrp/nushell-mode")
-  :mode ("\\.nu$" . nushell-mode))
+(use-package nushell-ts-mode
+  :straight (nushell-ts-mode :type git :host github :repo "herbertjones/nushell-ts-mode")
+  )
 
 (use-package boogie-friends
   :straight t
@@ -1947,6 +1880,9 @@ tasks."
   (setq python-indent-offset 4)
   (setq python-indent-guess-indent-offset nil))
 
+(use-package slint-mode
+      :straight t)
+
 ;; Integrate with nix-direnv
 ;; I am using devenv to manage project environment
 (use-package envrc
@@ -1976,8 +1912,8 @@ tasks."
   (elfeed-goodies/setup))
 
 (setq browse-url-browser-function 'browse-url-generic
-      browse-url-generic-program "firefox"
-      browse-url-generic-args '("--new-tab"))
+      browse-url-generic-program "qutebrowser"
+      browse-url-generic-args '("--target" "window"))
 
 (use-package anki-editor
   :defer t
@@ -1986,9 +1922,33 @@ tasks."
 (use-package gptel
   :straight t
   :config
-  (setq gptel-api-key "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")
+      (defun +get-key-from-pass (key)
+  	      "Get the key from pass-store."
+  	      (let ((pass (shell-command-to-string (format "pass show %s" key))))
+  		      (string-trim-right pass))
+  	      )
   (gptel-make-ollama
    "Ollama"
    :host "localhost:11434"
    :models '("zephyr:latest")
-   :stream t))
+   :stream t)
+
+      (setq gptel-default-mode 'org-mode)
+      (setq-default
+       gptel-model "claude-3-opus-20240229"
+       gptel-backend 	(gptel-make-anthropic "Claude"
+  									      :stream t
+  									      :key (+get-key-from-pass "anthropic"))
+       )
+      )
+
+;; Build by NixOS
+(use-package telega
+  :straight t
+      :config
+      (setq telega-emoji-font-family "Noto Color Emoji")
+  )
+
+(defun pinentry-emacs (desc prompt ok error)
+  (let ((str (read-passwd (concat (replace-regexp-in-string "%22" "\"" (replace-regexp-in-string "%0A" "\n" desc)) prompt ": "))))
+    str))

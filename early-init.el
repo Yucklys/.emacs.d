@@ -41,13 +41,6 @@
       scroll-preserve-screen-position 1)
 (size-indication-mode t) ; show size on mode line
 
-;; Temporarily increase the garbage collection threshold.  These
-;; changes help shave off about half a second of startup time.  The
-;; `most-positive-fixnum' is DANGEROUS AS A PERMANENT VALUE.  See the
-;; `emacs-startup-hook' a few lines below for what I actually use.
-(setq gc-cons-threshold most-positive-fixnum
-      gc-cons-percentage 0.5)
-
 ;; Same idea as above for the `file-name-handler-alist' and the
 ;; `vc-handled-backends' with regard to startup speed optimisation.
 ;; Here I am storing the default value with the intent of restoring it
@@ -66,4 +59,4 @@
                   vc-handled-backends sin-emacs--vc-handled-backends)))
 
 ;; name the default frame as "home"
-(add-hook 'after-init-hook (lambda () (set-frame-name "home")))
+;; (add-hook 'after-init-hook (lambda () (set-frame-name "home")))
