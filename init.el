@@ -575,7 +575,7 @@
   	   :repo "OlMon/consult-projectile" :branch "master")
   :defer t
   :bind
-  ("C-c p p" . 'consult-projectile-switch-project)
+  ("C-c p p" . 'consult-projectile)
   ("C-c p b" . 'consult-project-buffer)
   ("C-c p e" . 'consult-projectile-recentf)
   ("C-c p f" . 'consult-projectile-find-file)
@@ -790,6 +790,8 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
       ("C-c c a" . 'lsp-execute-code-action)
       ("C-c c d" . 'lsp-find-definition)
       ("C-c c i" . 'lsp-find-implementation)
+      ("C-c c f" . 'lsp-format-buffer)
+      ("C-c c F" . 'lsp-format-region)
       ("C-c c r" . 'lsp-rename))
 
   :custom
@@ -837,10 +839,7 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
         lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
         lsp-ui-doc-position 'at-point
         lsp-ui-sideline-ignore-duplicate t
-        ;; Don't show symbol definitions in the sideline. They are pretty noisy,
-        ;; and there is a bug preventing Flycheck errors from being shown (the
-        ;; errors flash briefly and then disappear).
-        lsp-ui-sideline-show-hover nil
+        lsp-ui-sideline-show-hover t
         ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
         ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
         lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
@@ -1388,10 +1387,7 @@ targets."
         (t variable-pitch)))
   )
 
-(defun yu/load-theme ()
-  	      (if (string= (format-time-string "%p") "AM")
-  		      (load-theme 'ef-maris-light t)
-  	      (load-theme 'ef-maris-dark t)))
+(defun yu/load-theme () (load-theme 'ef-maris-dark t))
 
 (if (daemonp)
   (add-hook 'server-after-make-frame-hook
@@ -1727,7 +1723,9 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
      ("ISSUE" :foreground "#bf616a" :weight normal :underline t) ("FIXED" :foreground "#a3be8c" :weight normal :underline t)
      ("CANCEL" :foreground "#bf616a" :underline t)))
   (org-image-actual-width '(400))
-  (org-reveal-root "https://revealjs.com"))
+  (org-reveal-root "https://revealjs.com")
+      (setq org-use-sub-superscripts "{}") ; use a_{b} style to show subscripts
+      )
 
 (use-package svg-lib :straight t)
 (use-package org-modern
@@ -1807,6 +1805,13 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (use-package org-noter
       :straight t)
 
+(use-package org-download
+      :straight t
+      :hook ((dired-mode org-mode) . org-download-enable)
+      :config
+      (setq org-download-method 'attach
+  			      org-download-screenshot-method "grimblast save area %s"))
+
 (use-package rustic
   :straight t
   :mode ("\\.rs$" . rustic-mode)
@@ -1878,7 +1883,16 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
   :config
   (setq python-indent-offset 4)
-  (setq python-indent-guess-indent-offset nil))
+  (setq python-indent-guess-indent-offset nil)
+
+      (with-eval-after-load 'lsp-mode
+  	      (setq lsp-pylsp-plugins-flake8-enabled nil)
+  	      (setq lsp-pylsp-plugins-rope-autoimport-enabled t)
+  	      (setq lsp-pylsp-plugins-rope-completion-enabled t)
+  	      (setq lsp-pylsp-plugins-ruff-enabled t)
+  	      (setq lsp-pylsp-plugins-ruff-preview t)
+  	      )
+      )
 
 (use-package slint-mode
       :straight t)

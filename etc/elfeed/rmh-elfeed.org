@@ -1,0 +1,20 @@
+* Blogs :elfeed:
+** Software Development :dev:
+*** Emacs :emacs:
+**** [[https://sachachua.com/blog/feed/][Sacha Chua's blog]]
+**** entry-title: \(emacs\|org-mode\)
+**** [[toobnix:154][EmacsConf]]
+*** Wayland :wayland:
+**** [[https://github.com/hyprwm/Hyprland/releases.atom][Hyprland Release Notes]]
+*** Nix :linux:
+**** [[https://nixos.org/blog/announcements-rss.xml][NixOS News]]
+**** [[https://www.reddit.com/r/NixOS.rss][r/NixOS]] :reddit:
+** Programming :dev:
+*** Rust :rust:
+**** [[https://this-week-in-rust.org/rss.xml][This week in Rust]]
+**** entry-title: \(rust\)
+*** GitHub trending :news:
+**** [[https://mshibanami.github.io/GitHubTrendingRSS/daily/all.xml][Daily: All Language]]
+**** [[https://mshibanami.github.io/GitHubTrendingRSS/weekly/rust.xml][Weekly: Rust]] :rust:
+
+#+link: toobnix https://toobnix.org/feeds/videos.xml?videoChannelId=
