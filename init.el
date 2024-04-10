@@ -1494,7 +1494,6 @@ targets."
   :hook (prog-mode . rainbow-delimiters-mode))
 
 (use-package display-line-numbers
-  :defer t
   :config
   (defcustom display-line-numbers-exempt-modes
     '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
@@ -1600,7 +1599,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 ;; Use serif font in text mode
 (use-package variable-pitch-mode
       :hook
-      (text-mode . variable-pitch-mode)
+      ((org-mode markdown-mode) . variable-pitch-mode)
       )
 
 (use-package emojify
@@ -1654,10 +1653,6 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (use-package treesit
   :config
   )
-
-(use-package tree-sitter-langs
-  :straight t
-  :after treesit)
 
 (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
   			      dockerfile-ts-mode))

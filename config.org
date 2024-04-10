@@ -1801,7 +1801,6 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 ** Line numbers
 #+begin_src emacs-lisp
   (use-package display-line-numbers
-    :defer t
     :config
     (defcustom display-line-numbers-exempt-modes
       '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
@@ -1911,7 +1910,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;; Use serif font in text mode
   (use-package variable-pitch-mode
   	:hook
-  	(text-mode . variable-pitch-mode)
+  	((org-mode markdown-mode) . variable-pitch-mode)
   	)
 #+end_src
 ** Emoji
@@ -1976,10 +1975,6 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   (use-package treesit
     :config
     )
-
-  (use-package tree-sitter-langs
-    :straight t
-    :after treesit)
 
   (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
   				dockerfile-ts-mode))
