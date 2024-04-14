@@ -164,7 +164,7 @@
   (corfu-preselect 'valid)
   (corfu-auto nil)
   (corfu-auto-delay 0.3)
-  (corfu-auto-prefix 0)
+  (corfu-auto-prefix 3)
 
   :hook
   (minibuffer-setup . corfu-enable-in-minibuffer)
@@ -450,17 +450,6 @@
 (use-package tempel-collection
   :straight t
   :after tempel)
-
-;; Integrate with eglot/lsp-mode.
-;; (use-package lsp-snippet-tempel
-;;   :straight (lsp-snippet-tempel :type git
-;;                                 :host github
-;;                                 :repo "svaante/lsp-snippet")
-;;   :config
-;;   ;; Initialize lsp-snippet -> tempel in eglot
-;;   ;; (lsp-snippet-tempel-eglot-init)
-;;   (lsp-snippet-tempel-lsp-mode-init)
-;;   )
 
 (use-package isearch
   :defer t
@@ -775,117 +764,56 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   (setq xref-search-program 'ripgrep
       xref-history-storage 'xref-window-local-history))
 
-(use-package lsp-mode
-  :straight t
-  :init
-  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-  (setq lsp-keymap-prefix "C-c l")
-
-  (defun my/lsp-mode-setup-completion ()
-    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-          '(orderless))) ;; Configure orderless
-
-  :bind
-  (:map lsp-mode-map
-      ("C-c c a" . 'lsp-execute-code-action)
-      ("C-c c d" . 'lsp-find-definition)
-      ("C-c c i" . 'lsp-find-implementation)
-      ("C-c c f" . 'lsp-format-buffer)
-      ("C-c c F" . 'lsp-format-region)
-      ("C-c c r" . 'lsp-rename))
-
-  :custom
-  (lsp-completion-provider :none)
-
-  :hook
-  ;; replace XXX-mode with concrete major-mode(e. g. python-mode)
-  ;; (XXX-mode . lsp)
-  ;; if you want which-key integration
-  (lsp-mode . lsp-enable-which-key-integration)
-  (lsp-completion-mode . my/lsp-mode-setup-completion)
-  (rust-ts-mode . 'lsp-deferred)
-  ((python-mode python-ts-mode) . 'lsp-deferred)
-
-  :config
-  ;; Disable default keybindings
-  (setq lsp-keymap-prefix nil)
-  (setq read-process-output-max (* 1024 1024)) ;; 1mb)
-  (setq lsp-log-io nil)
-  (setq lsp-enable-snippet nil)
-  (setq lsp-pylsp-plugins-black-enabled t)
-
-  ;; Some features that have great potential to be slow.
-  ;; Suggested by Doom Emacs
-  (setq lsp-enable-folding nil
-        lsp-enable-text-document-color nil)
-
-  ;; Disable breadcrumbs
-  (setq lsp-headerline-breadcrumb-enable nil)
-
-  ;; Enable inlay hint
-  (setq lsp-inlay-hint-enable t))
-
-(use-package lsp-ui
-  :hook (lsp-mode . lsp-ui-mode)
-  :straight t
-  :bind
-  ([remap xref-find-definitions] . 'lsp-ui-peek-find-definitions)
-  ([remap xref-find-references] . 'lsp-ui-peek-find-references)
-  :config
-  (setq lsp-ui-peek-enable t
-        lsp-ui-doc-max-height 8
-        lsp-ui-doc-max-width 72         ; 150 (default) is too wide
-        lsp-ui-doc-delay 0.75           ; 0.2 (default) is too naggy
-        lsp-ui-doc-show-with-mouse nil  ; don't disappear on mouseover
-        lsp-ui-doc-position 'at-point
-        lsp-ui-sideline-ignore-duplicate t
-        lsp-ui-sideline-show-hover t
-        ;; Re-enable icon scaling (it's disabled by default upstream for Emacs
-        ;; 26.x compatibility; see emacs-lsp/lsp-ui#573)
-        lsp-ui-sideline-actions-icon lsp-ui-sideline-actions-icon-default)
-  )
-
-(use-package lsp-treemacs
-  :straight t
-  :after (lsp-mode treemacs doom-themes)
-  :config
-  (lsp-treemacs-sync-mode 1)
-
-  ;; Fix conflict of icon theme with doom themes
-  (with-eval-after-load 'lsp-treemacs
-    (doom-themes-treemacs-config))
-  )
-
-(use-package consult-lsp
-  :straight t
-  :after (lsp-mode consult)
-  :bind
-  (:map lsp-mode-map
-      ([remap xref-find-apropos] . 'consult-lsp-symbols)
+(use-package eglot
+      :commands eglot eglot-ensure
+      :bind
+      (:map eglot-mode-map
+  			      ("C-c c i" ("Find implementation" . eglot-find-implementation))
+  			      ("C-c c d" ("Find declaration" . eglot-find-declaration))
+  			      ("C-c c f" ("Format buffer" . eglot-format))
+  			      ("C-c c a" ("Code action" . eglot-code-actions))
+  			      ("C-c c r" ("Rename" . eglot-rename)))
+      :init
+      (setq eglot-sync-connect 1
+  			      eglot-autoshutdown t
+  			      eglot-auto-display-help-buffer nil)
+      ;; use flycheck instead of flymake
+      (setq eglot-stay-out-of '(flymake))
       )
-  )
+
+(use-package eglot-x
+      :straight (:host github :repo "nemethf/eglot-x")
+      :after eglot
+      :config (eglot-x-setup))
+
+(use-package consult-eglot
+      :straight t
+      :defer t
+      :bind (:map eglot-mode-map
+  						      ([remap xref-find-apropos] . 'consult-eglot-symbols)))
+
+(use-package flycheck-eglot
+      :straight t
+      :hook (eglot-managed-mode . flycheck-eglot-mode))
 
 (use-package copilot
-  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("dist" "*.el"))
-  :when (executable-find "node")
-  :defer t
-  :hook ((prog-mode org-mode markdown-mode) . 'copilot-mode)
-  :bind (:map copilot-mode-map
-  	    ("C-e" . '+copilot-complete)
-  	    ("M-f" . '+copilot-complete-word))
-  :config
-  (setq copilot-indent-offset-warning-disable t)
+  :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+      :hook (prog-mode . copilot-mode)
+      :bind (:map copilot-completion-map
+  						      ("C-e" . +copilot-complete)
+  						      ("M-f" . +copilot-complete-word))
+      :config
+      (setq copilot-indent-warning-suppress t)
 
-  (defun +copilot-complete ()
+      (defun +copilot-complete ()
     (interactive)
     (or (copilot-accept-completion)
-      (move-end-of-line 1)))
+        (mwim-end-of-code-or-line)))
 
   (defun +copilot-complete-word ()
     (interactive)
-    (or (copilot-accept-completeion-by-word 1)
-      (forward-word)))
-  )
+    (or (copilot-accept-completion-by-word 1)
+        (forward-word))))
 
 (use-package meow
   :straight t
@@ -1798,7 +1726,10 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (markdown-mode . toc-org-mode))
 
 (use-package org-noter
-      :straight t)
+      :straight t
+      :defer t
+      :requires (org pdf-tools)
+      :after pdf-tools)
 
 (use-package org-download
       :straight t
@@ -1811,10 +1742,11 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :straight t
   :mode ("\\.rs$" . rustic-mode)
   :config
-  (setq rustic-lsp-client 'lsp-mode)
+  (setq rustic-lsp-client 'eglot)
   (setq rustic-indent-method-chain t)
   (setq rustic-format-on-save t)
-  (setq rustic-rustfmt-bin-remote "rustfmt")
+      (setq rustic-rustfmt-bin-remote "rustfmt"
+  			      rustic-rustfmt-args '("--edition=2021"))
   )
 
 (add-to-list 'major-mode-remap-alist
@@ -1836,33 +1768,6 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :straight (nushell-ts-mode :type git :host github :repo "herbertjones/nushell-ts-mode")
   )
 
-(use-package boogie-friends
-  :straight t
-  :init
-  (defun lsp-dafny--server-command ()
-    "Compute the command to run Dafny's LSP server."
-    `(,(lsp-dafny-ensure-executable (lsp-dafny--server-installed-executable))
-      ,(pcase lsp-dafny-server-automatic-verification-policy
-       ((and policy (or `never `onchange `onsave))
-          (format "--documents:verify=%S" policy))
-       (other (user-error "Invalid value %S in \
-      `lsp-dafny-server-automatic-verification-policy'" other)))
-      ,@(pcase lsp-dafny-server-verification-time-limit
-  	(`nil nil)
-  	((and limit (pred integerp))
-           (list (format "--verifier:timelimit=%d" limit)))
-  	(other (user-error "Invalid value %S in \
-      `lsp-dafny-server-verification-time-limit'" other)))
-      ,@lsp-dafny-server-args))
-  :config
-  ;; (setq flycheck-inferior-dafny-executable "/run/current-system/sw/bin/dafny")
-  ;; (setq flycheck-dafny-executable "/run/current-system/sw/bin/dafny")
-  ;; (setq dafny-verification-backend 'cli)
-  (setq flycheck-inferior-dafny-executable nil)
-  (setq dafny-verification-backend nil)
-  ;; (setq lsp-dafny-preferred-version nil)
-  )
-
 (use-package just-mode
   :straight t
   :mode ("\\justfile\\'" . just-mode))
@@ -1879,14 +1784,6 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :config
   (setq python-indent-offset 4)
   (setq python-indent-guess-indent-offset nil)
-
-      (with-eval-after-load 'lsp-mode
-  	      (setq lsp-pylsp-plugins-flake8-enabled nil)
-  	      (setq lsp-pylsp-plugins-rope-autoimport-enabled t)
-  	      (setq lsp-pylsp-plugins-rope-completion-enabled t)
-  	      (setq lsp-pylsp-plugins-ruff-enabled t)
-  	      (setq lsp-pylsp-plugins-ruff-preview t)
-  	      )
       )
 
 (use-package slint-mode
