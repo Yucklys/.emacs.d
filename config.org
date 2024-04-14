@@ -2029,12 +2029,82 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :straight t
     :defer t
     :bind
-    ("C-c n n" . 'denote)
-    ("C-c n f" . 'denote-open-or-create)
+    ("C-c n n n" . 'denote)
+    ("C-c n n d" . 'denote-date)
+    ("C-c n n s" . 'denote-subdirectory)
+  	("C-c n n t" . 'denote-type)
+  	("C-c n n x" . 'denote-org-extras-extract-org-subtree)
+  	("C-c n n c" . 'org-capture)
+  	("C-c n i" . 'denote-link-or-create)
+  	("C-c n I" . 'denote-org-extras-link-to-heading)
+    ("C-c n f" . 'denote-open-or-create-with-command)
+  	("C-c n j" . 'denote-journal-extras-new-entry)
+  	("C-c n b" . 'denote-find-backlink)
+  	("C-c n c" . 'denote-region)
+  	("C-c n B" . 'denote-backlinks)
     :config
     (setq denote-directory (file-name-concat org-directory "denote/"))
-  	
-    )
+
+  	;; setup interactive prompt for note creation
+  	(setq denote-prompts '(title keywords template))
+
+  	;; use org's date selection interface for denote
+  	(setq denote-date-prompt-use-org-read-date t)
+
+  	;; templates
+  	(setq denote-templates
+  				'((memo . "* Memo\n")
+  					(summary . "* Source\n\n* Summary\n")
+  					(review . ,(concat "* Info"
+  													 "\n\n"
+  													 "* Review"
+  													 "\n"))))
+
+  	;; org-capture integration
+  	(with-eval-after-load 'org-capture
+  		(add-to-list 'org-capture-templates
+  								 '("n" "New note (with Denote)" plain
+  									 (file denote-last-path)
+  									 #'denote-org-capture
+  									 :no-save t
+  									 :immediate-finish nil
+  									 :kill-buffer t
+  									 :jump-to-captured t)))
+
+  	;; call org-insert-structure-template
+  	;; when in org-mode after ~denote-region~
+  	(defun my-denote-region-org-structure-template (_beg _end)
+    (when (derived-mode-p 'org-mode)
+      (activate-mark)
+      (call-interactively 'org-insert-structure-template)))
+
+  	(add-hook 'denote-region-after-new-note-functions
+  						#'my-denote-region-org-structure-template)
+
+  	;; Exclude assets folders from operations
+  	(setq denote-excluded-directories-regexp (rx (| "data" "ltximg")))
+
+  	;; show context in backlink buffer
+  	(setq denote-backlinks-show-context t)
+  	;; show the backlink buffer in the left side window
+  	(setq denote-link-backlinks-display-buffer-action
+        '((display-buffer-reuse-window
+           display-buffer-in-side-window)
+          (side . left)
+          (slot . 99)
+          (window-width . 0.3)))
+
+  	;; dired integration
+  	(setq denote-dired-directories
+  				(list denote-directory
+  							(expand-file-name "project" denote-directory)
+  							(expand-file-name "journal" denote-directory)))
+
+  	(add-hook 'dired-mode-hook #'denote-dired-mode-in-directories)
+
+  	;; automatically rename denote buffers
+  	(denote-rename-buffer-mode 1)
+  	)
 #+end_src
 *** Org appear
 #+begin_src emacs-lisp
