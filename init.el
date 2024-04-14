@@ -803,7 +803,7 @@ Other buffer group by `centaur-tabs-get-group-name' with project name."
   						      ("C-e" . +copilot-complete)
   						      ("M-f" . +copilot-complete-word))
       :config
-      (setq copilot-indent-warning-suppress t)
+      (setq copilot-indent-offset-warning-disable t)
 
       (defun +copilot-complete ()
     (interactive)
@@ -1697,6 +1697,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   ("C-c n f" . 'denote-open-or-create)
   :config
   (setq denote-directory (file-name-concat org-directory "denote/"))
+
   )
 
 (use-package org-appear

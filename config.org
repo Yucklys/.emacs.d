@@ -1054,7 +1054,7 @@ Use ~copilot~ to provide code completion. It is a language server that provides 
   							("C-e" . +copilot-complete)
   							("M-f" . +copilot-complete-word))
   	:config
-  	(setq copilot-indent-warning-suppress t)
+  	(setq copilot-indent-offset-warning-disable t)
 
   	(defun +copilot-complete ()
       (interactive)
@@ -2033,6 +2033,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     ("C-c n f" . 'denote-open-or-create)
     :config
     (setq denote-directory (file-name-concat org-directory "denote/"))
+  	
     )
 #+end_src
 *** Org appear
