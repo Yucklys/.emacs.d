@@ -1221,6 +1221,7 @@ targets."
   (dirvish-quick-access-entries
    '(("h" "~/"                          "Home")
      ("d" "~/Downloads/"                "Downloads")
+     ("n" "~/org/"                      "Org notes")
      ("p" "~/Projects/"                 "Projects")
      ("e" "~/.emacs.d/"                 "Emacs")
      ("t" "~/.local/share/Trash/files/" "Trash Can")))
@@ -1230,7 +1231,12 @@ targets."
            (seq bol "." (not (any "."))) ;; dot-files
            (seq "~" eol)                 ;; backup-files
            (seq bol "CVS" eol)           ;; CVS dirs
-           ))))
+           )))
+      ;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
+      (if (not (version< emacs-version "29"))
+  		      (setq dired-mouse-drag-files t
+  					      mouse-drag-and-drop-region-cross-program t))
+      )
 
 (use-package treemacs
   :straight (treemacs
