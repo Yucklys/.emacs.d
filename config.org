@@ -1438,7 +1438,11 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;; Better other-window
   (use-package ace-window
     :straight t
-    :bind ("M-o" . ace-window))
+    :bind ("M-o" . ace-window)
+  	:config
+  	;; switch windows inside current frame
+  	(setq aw-scope 'frame)
+  	)
 #+end_src
 ** Projectile
 #+begin_src emacs-lisp

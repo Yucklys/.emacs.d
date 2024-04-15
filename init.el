@@ -1157,7 +1157,11 @@ targets."
 ;; Better other-window
 (use-package ace-window
   :straight t
-  :bind ("M-o" . ace-window))
+  :bind ("M-o" . ace-window)
+      :config
+      ;; switch windows inside current frame
+      (setq aw-scope 'frame)
+      )
 
 ;; Better project management
 (use-package projectile
