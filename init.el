@@ -608,147 +608,6 @@
   (add-to-list 'recentf-exclude
                (concat org-directory "index.org")))
 
-(use-package centaur-tabs
-  :straight t
-  :bind
-  ("C-c t n" . 'centaur-tabs-forward-tab)
-  ("C-c t p" . 'centaur-tabs-backward-tab)
-  ("C-c t N" . 'centaur-tabs-select-end-tab)
-  ("C-c t P" . 'centaur-tabs-select-beg-tab)
-  ("C-c t s" . 'centaur-tabs-switch-group)
-  ("C-c t j" . 'centaur-tabs-ace-jump)
-  :hook
-  (org-src-mode . centaur-tabs-local-mode) ; disable bar in org edit src
-  (dashboard-mode . centaur-tabs-local-mode)
-  (term-mode . centaur-tabs-local-mode)
-  (vterm-mode . centaur-tabs-local-mode)
-  (org-agenda-mode . centaur-tabs-local-mode)
-  (calendar-mode . centaur-tabs-local-mode)
-  (elfeed-search-mode . centaur-tabs-local-mode)
-  ((telega-root-mode
-  	      telega-chat-mode) . centaur-tabs-local-mode)
-
-  :init        
-  (defun centaur-tabs-buffer-groups ()
-    "`centaur-tabs-buffer-groups' control buffers' group rules.
-
-Group centaur-tabs with mode if buffer is derived from `eshell-mode' `emacs-lisp-mode' `dired-mode' `org-mode' `magit-mode'.
-All buffer name start with * will group to \"Emacs\".
-Other buffer group by `centaur-tabs-get-group-name' with project name."
-    (list
-     (cond
-      ((or (string-equal "*" (substring (buffer-name) 0 1))
-           (memq major-mode '(magit-process-mode
-                              magit-status-mode
-                              magit-diff-mode
-                              magit-log-mode
-                              magit-file-mode
-                              magit-blob-mode
-                              magit-blame-mode
-                              )))
-       "Emacs")
-      ((derived-mode-p 'prog-mode)
-       "Editing")
-      ((derived-mode-p '(eshell-mode
-  		       vterm-mode))
-       "Term")
-      ((derived-mode-p 'dired-mode)
-       "Dired")
-      ((memq major-mode '(helpful-mode
-                          help-mode))
-       "Help")
-      ((memq major-mode '(org-mode
-  			org-roam-mode
-                          org-agenda-clockreport-mode
-                          org-src-mode
-                          org-agenda-mode
-                          org-beamer-mode
-                          org-indent-mode
-                          org-bullets-mode
-                          org-cdlatex-mode
-                          org-agenda-log-mode
-                          diary-mode))
-       "Org")
-      (t
-       (centaur-tabs-get-group-name (current-buffer))))))
-
-  (defun centaur-tabs-hide-tab (x)
-    "Do no to show buffer X in tabs."
-    (let ((name (format "%s" x)))
-      (or
-       ;; Current window is not dedicated window.
-       (window-dedicated-p (selected-window))
-
-       ;; Buffer name not match below blacklist.
-       (string-prefix-p "*epc" name)
-       (string-prefix-p "*helm" name)
-       (string-prefix-p "*Helm" name)
-       (string-prefix-p "*Compile-Log*" name)
-       (string-prefix-p "*lsp" name)
-       (string-prefix-p "*company" name)
-       (string-prefix-p "*Flycheck" name)
-       (string-prefix-p "*tramp" name)
-       (string-prefix-p " *Mini" name)
-       (string-prefix-p "*help" name)
-       (string-prefix-p "*straight" name)
-       (string-prefix-p " *temp" name)
-       (string-prefix-p "*Help" name)
-       (string-prefix-p "*mybuf" name)
-
-       ;; Is not magit buffer.
-       (and (string-prefix-p "magit" name)
-            (not (file-name-extension name)))
-       )))
-  (centaur-tabs-mode t)
-  (centaur-tabs-headline-match)
-
-  :config
-  ;; Tab appearence
-  (setq centaur-tabs-style "bar")
-  (setq centaur-tabs-height 32)
-  (setq centaur-tabs-set-icons t)
-  (setq centaur-tabs-icon-type 'nerd-icons)
-  (setq centaur-tabs-set-bar 'under)
-  (setq x-underline-at-descent-line t)
-  (setq centaur-tabs-set-close-button nil)
-  (setq centaur-tabs-set-modified-marker t)
-
-  ;; Customize
-  (setq centaur-tabs-cycle-scope 'tabs) ; tabs or groups
-  (setq centaur-tabs--buffer-show-groups nil)
-  (centaur-tabs-enable-buffer-reordering)
-  (setq centaur-tabs-adjust-buffer-order t)
-
-  ;; Integration
-  (centaur-tabs-group-by-projectile-project)
-
-  ;; Custome face
-  ;; (set-face-attribute 'centaur-tabs-selected nil
-  ;; 		      :inherit 'centaur-tabs-selected
-  ;; 		      :underline "#81A1C1")
-  ;; (set-face-attribute 'centaur-tabs-selected-modified nil
-  ;; 		      :inherit 'centaur-tabs-selected
-  ;; 		      :foreground "#8FBCBB"
-  ;; 		      :underline "#81A1C1")
-  ;; (set-face-attribute 'centaur-tabs-default nil
-  ;; 		      :inherit 'centaur-tabs-default
-  ;; 		      :background "#3B4252")
-  )
-
-(defun tdr/fix-centaur-tabs ()
-  (centaur-tabs-mode -1)
-  (centaur-tabs-mode)
-  (centaur-tabs-headline-match)
-  )
-
-(if (daemonp)
-    (add-hook 'after-make-frame-functions
-  	    (lambda (frame)
-  	      (with-selected-frame frame
-  		(tdr/fix-centaur-tabs)))
-  	    (tdr/fix-centaur-tabs))
-  )
-
 (use-package flycheck
   :straight t
   :hook
@@ -1727,7 +1586,8 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
       ;; templates
       (setq denote-templates
-  			      '((memo . "* Memo\n")
+  			      '((plain . "* ")
+  				      (memo . "* Memo\n")
   				      (summary . "* Source\n\n* Summary\n")
   				      (review . ,(concat "* Info"
   												       "\n\n"
@@ -1870,6 +1730,26 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (use-package slint-mode
       :straight t)
 
+(use-package ess
+      :straight t
+      :init
+      (setq ess-style 'RStudio)
+      :mode
+      (("\\.[rR]\\'" . R-mode)))
+
+;; Setup polymode for Rmarkdown
+(use-package polymode)
+(use-package poly-markdown
+      :straight t
+      :config
+      (add-to-list 'auto-mode-alist '("\\.md$" . poly-markdown-mode)))
+(use-package poly-R
+      :straight t
+      :config
+      (add-to-list 'auto-mode-alist '("\\.Snw$" . poly-noweb+r-mode))
+      (add-to-list 'auto-mode-alist '("\\.Rnw$" . poly-noweb+r-mode))
+      (add-to-list 'auto-mode-alist '("\\.Rmd$" . poly-markdown+r-mode)))
+
 ;; Integrate with nix-direnv
 ;; I am using devenv to manage project environment
 (use-package envrc
@@ -1900,7 +1780,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
 (setq browse-url-browser-function 'browse-url-generic
       browse-url-generic-program "qutebrowser"
-      browse-url-generic-args '("--target" "window"))
+      browse-url-generic-args nil)
 
 (use-package anki-editor
   :defer t
