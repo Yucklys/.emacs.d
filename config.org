@@ -87,6 +87,8 @@
   - [[#python][Python]]
   - [[#slint][Slint]]
   - [[#r][R]]
+  - [[#web-developing][Web developing]]
+  - [[#graphql][GraphQL]]
 - [[#environment][Environment]]
 - [[#tools][Tools]]
   - [[#pdf][PDF]]
@@ -2088,6 +2090,8 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     :init
     ;; Open python files in tree-sitter mode.
     (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
+  	:hook
+  	(python-mode . eglot-ensure)
     :config
     (setq python-indent-offset 4)
     (setq python-indent-guess-indent-offset nil)
@@ -2120,6 +2124,15 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   	(add-to-list 'auto-mode-alist '("\\.Snw$" . poly-noweb+r-mode))
   	(add-to-list 'auto-mode-alist '("\\.Rnw$" . poly-noweb+r-mode))
   	(add-to-list 'auto-mode-alist '("\\.Rmd$" . poly-markdown+r-mode)))
+#+end_src
+** Web developing
+#+begin_src emacs-lisp
+  (add-to-list 'auto-mode-alist '("\\.tcss\\'" . css-ts-mode))
+#+end_src
+** GraphQL
+#+begin_src emacs-lisp
+  (use-package graphql-mode
+  	:straight t)
 #+end_src
 * Environment
 #+begin_src emacs-lisp

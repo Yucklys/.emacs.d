@@ -1722,6 +1722,8 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :init
   ;; Open python files in tree-sitter mode.
   (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
+      :hook
+      (python-mode . eglot-ensure)
   :config
   (setq python-indent-offset 4)
   (setq python-indent-guess-indent-offset nil)
@@ -1749,6 +1751,11 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
       (add-to-list 'auto-mode-alist '("\\.Snw$" . poly-noweb+r-mode))
       (add-to-list 'auto-mode-alist '("\\.Rnw$" . poly-noweb+r-mode))
       (add-to-list 'auto-mode-alist '("\\.Rmd$" . poly-markdown+r-mode)))
+
+(add-to-list 'auto-mode-alist '("\\.tcss\\'" . css-ts-mode))
+
+(use-package graphql-mode
+      :straight t)
 
 ;; Integrate with nix-direnv
 ;; I am using devenv to manage project environment
