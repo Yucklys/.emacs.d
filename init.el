@@ -40,7 +40,7 @@
   (when (fboundp 'startup-redirect-eln-cache)
     (startup-redirect-eln-cache
      (convert-standard-filename
-      (expand-file-name  "var/eln-cache/" user-emacs-directory)))))
+	(expand-file-name  "var/eln-cache/" user-emacs-directory)))))
 
 ;; Make native compilation silent and prune its cache.
 (when (native-comp-available-p)
@@ -140,13 +140,13 @@
   (setq magit-display-buffer-function
       #'magit-display-buffer-fullframe-status-v1)
   (setq magit-bury-buffer-function
-      #'magit-restore-window-configuration)
+	#'magit-restore-window-configuration)
   )
 
 ;; Set PATH for remote machine respect to user's PATH
 (connection-local-set-profile-variables 'remote-path-with-bin
-  				      '((tramp-remote-path . (tramp-default-remote-path
-  							      tramp-own-remote-path))))
+					'((tramp-remote-path . (tramp-default-remote-path
+								tramp-own-remote-path))))
 
 (connection-local-set-profiles
    '(:application tramp :user "vagrant") 'remote-path-with-bin)
@@ -170,7 +170,7 @@
   (minibuffer-setup . corfu-enable-in-minibuffer)
   (eshell-mode . corfu-enable-in-shell)
   (meow-insert-exit . corfu-quit)
-
+  
   :bind
   (:map corfu-map
         ("S-SPC" . corfu-insert-separator)
@@ -178,7 +178,7 @@
         ([tab] . corfu-next)
         ("S-TAB" . corfu-previous)
         ([backtab] . corfu-previous))
-
+  
   :init
   (global-corfu-mode)
 
@@ -316,7 +316,7 @@
   :config
   (defun orderless-fast-dispatch (word index total)
     (and (= index 0) (= total 1) (length< word 4)
-       `(orderless-regexp . ,(concat "^" (regexp-quote word)))))
+	 `(orderless-regexp . ,(concat "^" (regexp-quote word)))))
 
   (orderless-define-completion-style orderless-fast
     (orderless-style-dispatchers '(orderless-fast-dispatch))
@@ -328,7 +328,7 @@
   (setq completion-styles '(orderless basic)
         completion-category-defaults nil
         completion-category-overrides
-      '((file (styles . (basic partial-completion orderless)))
+	'((file (styles . (basic partial-completion orderless)))
           (bookmark (styles . (basic substring)))
           (library (styles . (basic substring)))
           (embark-keybinding (styles . (basic substring)))
@@ -455,14 +455,14 @@
   :defer t
   :bind
   (:map isearch-mode-map
-      ("M-/" . 'isearch-complete))
+	("M-/" . 'isearch-complete))
   :config
   ;; use SPC to combine two seaorch regexp instead of one.*two,
   ;; similar to orderless
   (setq search-whitespace-regexp ".*?" ; one `setq' here to make it obvious they are a bundle
         isearch-lax-whitespace t
         isearch-regexp-lax-whitespace nil)
-
+  
   (setq search-highlight t)
   (setq isearch-lazy-highlight t)
   (setq lazy-highlight-initial-delay 0.5)
@@ -507,13 +507,13 @@
   ;; Use Consult to select xref locations with preview
   (setq xref-show-xrefs-function #'consult-xref
         xref-show-definitions-function #'consult-xref)
-
+  
   :config
   (setq consult-buffer-filter `(,@consult-buffer-filter
-  			      "\\`\\*Async-native-compile-log\\*\\'"
-  			      "\\`\\*straight-process\\*\\'"
-  			      "\\`\\*dashboard\\*\\'"
-  			      "\\`\\*.*\\*\\'"))
+				"\\`\\*Async-native-compile-log\\*\\'"
+				"\\`\\*straight-process\\*\\'"
+				"\\`\\*dashboard\\*\\'"
+				"\\`\\*.*\\*\\'"))
   (setq-default consult-preview-key 'any)
   (consult-customize
    consult-theme :preview-key '(:debounce 0.2 any)
@@ -560,8 +560,8 @@
 ;; Integrate with projectile
 (use-package consult-projectile
   :straight (consult-projectile
-  	   :type git :host gitlab
-  	   :repo "OlMon/consult-projectile" :branch "master")
+	     :type git :host gitlab
+	     :repo "OlMon/consult-projectile" :branch "master")
   :defer t
   :bind
   ("C-c p p" . 'consult-projectile)
@@ -621,50 +621,44 @@
 (use-package xref
   :config
   (setq xref-search-program 'ripgrep
-      xref-history-storage 'xref-window-local-history))
+	xref-history-storage 'xref-window-local-history))
 
-(use-package eglot
-      :commands eglot eglot-ensure
-      :bind
-      (:map eglot-mode-map
-  			      ("C-c c i" ("Find implementation" . eglot-find-implementation))
-  			      ("C-c c d" ("Find declaration" . eglot-find-declaration))
-  			      ("C-c c f" ("Format buffer" . eglot-format))
-  			      ("C-c c a" ("Code action" . eglot-code-actions))
-  			      ("C-c c r" ("Rename" . eglot-rename)))
-      :init
-      (setq eglot-sync-connect 1
-  			      eglot-autoshutdown t
-  			      eglot-auto-display-help-buffer nil)
-      ;; use flycheck instead of flymake
-      (setq eglot-stay-out-of '(flymake))
-      )
+(use-package lsp-mode
+	:straight t
+  :commands lsp-deferred
+	:custom
+	(lsp-completion-provider :none)
+  :init
+  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
+  (setq lsp-keymap-prefix "C-c l")
+	;; use corfu for completion
+	(defun my/lsp-mode-setup-completion ()
+    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+          '(orderless))) ;; Configure orderless
+  :hook
+  (lsp-completion-mode . my/lsp-mode-setup-completion)
+	(rustic-mode . lsp-deferred)
+	:config
+	;; use breadcrumb instead
+	(setq lsp-headerline-breadcrumb-enable nil)
+	;; enable inlay hints
+	(setq lsp-inlay-hint-enable t)
+	)
 
-(use-package eglot-x
-      :straight (:host github :repo "nemethf/eglot-x")
-      :after eglot
-      :config (eglot-x-setup))
-
-(use-package consult-eglot
-      :straight t
-      :defer t
-      :bind (:map eglot-mode-map
-  						      ([remap xref-find-apropos] . 'consult-eglot-symbols)))
-
-(use-package flycheck-eglot
-      :straight t
-      :hook (eglot-managed-mode . flycheck-eglot-mode))
+(use-package lsp-ui
+	:straight t
+	:commands lsp-ui-mode)
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
-      :hook (prog-mode . copilot-mode)
-      :bind (:map copilot-completion-map
-  						      ("C-e" . +copilot-complete)
-  						      ("M-f" . +copilot-complete-word))
-      :config
-      (setq copilot-indent-offset-warning-disable t)
+	:hook (prog-mode . copilot-mode)
+	:bind (:map copilot-completion-map
+							("C-e" . +copilot-complete)
+							("M-f" . +copilot-complete-word))
+	:config
+	(setq copilot-indent-offset-warning-disable t)
 
-      (defun +copilot-complete ()
+	(defun +copilot-complete ()
     (interactive)
     (or (copilot-accept-completion)
         (mwim-end-of-code-or-line)))
@@ -777,10 +771,10 @@
   :init
   (puni-global-mode)
   :bind (("C-c e (" . 'puni-wrap-round)
-       ("C-c e )" . 'puni-wrap-round)
-       ("C-c e [" . 'puni-wrap-square)
-       ("C-c e ]" . 'puni-wrap-square)
-       ("C-h" . 'puni-force-delete))
+	 ("C-c e )" . 'puni-wrap-round)
+	 ("C-c e [" . 'puni-wrap-square)
+	 ("C-c e ]" . 'puni-wrap-square)
+	 ("C-h" . 'puni-force-delete))
   :config
   (defun puni-kill-line ()
     "Kill a line forward while keeping expressions balanced."
@@ -814,7 +808,7 @@
   :straight t
   :config
   (setq undo-fu-session-incompatible-files '("/COMMIT_EDITMSG\\'"
-  					   "/git-rebase-todo\\'"))
+					     "/git-rebase-todo\\'"))
   (undo-fu-session-global-mode))
 
 (defun toggle-selective-display (column)
@@ -886,8 +880,8 @@
           rime-predicate-tex-math-or-command-p
           rime-predicate-punctuation-after-space-cc-p
           rime-predicate-prog-in-code-p
-  	rime-predicate-ace-window-p
-  	rime-predicate-current-uppercase-letter-p
+	  rime-predicate-ace-window-p
+	  rime-predicate-current-uppercase-letter-p
           ;; rime-predicate-punctuation-line-begin-p
           ;; rime-predicate-current-uppercase-letter-p
           ))
@@ -934,14 +928,14 @@
   (("C-c o T" . 'vterm)
    :map vterm-mode-map
    ("C-q" . 'vterm-send-next-key))
-
+  
   :config
   (setq vterm-kill-buffer-on-exit t)
   (setq vterm-shell "nu")
   (add-hook 'vterm-mode-hook
             (lambda ()
               (set (make-local-variable 'buffer-face-mode-face)
-  		 '(:height 140 :family "Iosevka Nerd Font"))
+		   '(:height 140 :family "Iosevka Nerd Font"))
               (buffer-face-mode t)))
   )
 
@@ -1017,10 +1011,10 @@ targets."
 (use-package ace-window
   :straight t
   :bind ("M-o" . ace-window)
-      :config
-      ;; switch windows inside current frame
-      (setq aw-scope 'frame)
-      )
+	:config
+	;; switch windows inside current frame
+	(setq aw-scope 'frame)
+	)
 
 ;; Better project management
 (use-package projectile
@@ -1034,7 +1028,7 @@ targets."
           (lambda ()
             (when (file-remote-p default-directory)
               (projectile-mode -1))))
-
+  
   (projectile-mode +1))
 
 ;; (use-package project)
@@ -1095,11 +1089,11 @@ targets."
            (seq "~" eol)                 ;; backup-files
            (seq bol "CVS" eol)           ;; CVS dirs
            )))
-      ;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
-      (if (not (version< emacs-version "29"))
-  		      (setq dired-mouse-drag-files t
-  					      mouse-drag-and-drop-region-cross-program t))
-      )
+	;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
+	(if (not (version< emacs-version "29"))
+			(setq dired-mouse-drag-files t
+						mouse-drag-and-drop-region-cross-program t))
+	)
 
 (use-package treemacs
   :straight (treemacs
@@ -1165,14 +1159,14 @@ targets."
 
 (use-package ef-themes
   :straight t
-      :custom-face
-      (variable-pitch ((t (:family "LXGW WenKai"))))
-      (fixed-pitch ((t (:family "Mono Lisa"))))
+	:custom-face
+	(variable-pitch ((t (:family "LXGW WenKai"))))
+	(fixed-pitch ((t (:family "Mono Lisa"))))
   :config
   (setq ef-themes-to-toggle '(ef-maris-light ef-maris-dark))
   (setq ef-themes-mixed-fonts t
-  			      ef-themes-variable-pitch-ui t)
-      (setq ef-themes-headings ; read the manual's entry or the doc string
+				ef-themes-variable-pitch-ui t)
+	(setq ef-themes-headings ; read the manual's entry or the doc string
       '((0 variable-pitch light)
         (1 variable-pitch light)
         (2 variable-pitch regular)
@@ -1193,7 +1187,7 @@ targets."
 
 (use-package doom-modeline
   :straight t
-      :defer t
+	:defer t
   :init (doom-modeline-mode 1)
   :custom
   (doom-modeline-support-imenu t)
@@ -1218,14 +1212,14 @@ targets."
   (dashboard-set-file-icons nil)
   :config
   (dashboard-modify-heading-icons '((recents . "nf-oct-history")
-  				  (projects . "nf-oct-rocket")
-  				  (bookmarks . "nf-oct-bookmark")))
+				    (projects . "nf-oct-rocket")
+				    (bookmarks . "nf-oct-bookmark")))
   (add-to-list 'dashboard-items '(projects . 5) t)
   (dashboard-setup-startup-hook)
   (setq initial-buffer-choice
         (lambda ()
-  	(get-buffer-create "*dashboard*") ; Show dashboard with emacsclient
-  	))
+	  (get-buffer-create "*dashboard*") ; Show dashboard with emacsclient
+	  ))
   )
 
 ;; All-the-icons
@@ -1295,7 +1289,7 @@ targets."
   (defcustom display-line-numbers-exempt-modes
     '(vterm-mode eshell-mode shell-mode term-mode ansi-term-mode
                  treemacs-mode dashboard-mode org-mode which-key-mode
-  	       vterm-mode org-mode occur-mode pdf-view-mode)
+		 vterm-mode org-mode occur-mode pdf-view-mode)
     "Major modes on which to disable line numbers."
     :group 'display-line-numbers
     :type 'list
@@ -1329,7 +1323,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   ;; integration with the `consult' package
   (consult-after-jump . pulsar-recenter-top)
   (consult-after-jump . pulsar-reveal-entry)
-
+  
   ;; integration with the built-in `imenu'
   (imenu-after-jump . pulsar-recenter-top)
   (imenu-after-jump . pulsar-reveal-entry)
@@ -1349,8 +1343,8 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :config
   (setq cnfonts-use-face-font-rescale t)
   (setq cnfonts-personal-fontnames '(("Mono Lisa")
-  				   ("LXGW WenKai Mono" "LXGW WenKai"
-  				    "LXGW WenKai Screen")))
+				     ("LXGW WenKai Mono" "LXGW WenKai"
+				      "LXGW WenKai Screen")))
   (cnfonts-mode 1)
   )
 
@@ -1395,15 +1389,15 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
 ;; Use serif font in text mode
 (use-package variable-pitch-mode
-      :hook
-      ((org-mode markdown-mode) . variable-pitch-mode)
-      )
+	:hook
+	((org-mode markdown-mode) . variable-pitch-mode)
+	)
 
 (use-package emojify
   :straight t
-      :hook
-      ((telega-root-mode
-  	      telega-chat-mode) . emojify-mode)
+	:hook
+	((telega-root-mode
+		telega-chat-mode) . emojify-mode)
   )
 
 (use-package breadcrumb
@@ -1435,14 +1429,14 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
 (use-package bufler
   :straight (bufler :host github
-  		  :repo "alphapapa/bufler.el")
+		    :repo "alphapapa/bufler.el")
   :init
   (bufler-mode 1)
   :bind
   ("C-c b b" . 'bufler-switch-buffer)
   ("C-c b l" . 'bufler)
-      ("C-c b s" . 'bufler-workspace-focus-buffer)
-      ("C-c b S" . 'bufler-workspace-frame-set)
+	("C-c b s" . 'bufler-workspace-focus-buffer)
+	("C-c b S" . 'bufler-workspace-frame-set)
   :config
   (require 'bufler-workspace-tabs)
   )
@@ -1452,7 +1446,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   )
 
 (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
-  			      dockerfile-ts-mode))
+				dockerfile-ts-mode))
 
 (use-package markdown-mode
   :straight t
@@ -1516,8 +1510,8 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
      ("CANCEL" :foreground "#bf616a" :underline t)))
   (org-image-actual-width '(400))
   (org-reveal-root "https://revealjs.com")
-      (setq org-use-sub-superscripts "{}") ; use a_{b} style to show subscripts
-      )
+	(setq org-use-sub-superscripts "{}") ; use a_{b} style to show subscripts
+	)
 
 (use-package svg-lib :straight t)
 (use-package org-modern
@@ -1565,97 +1559,97 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   ("C-c n n n" . 'denote)
   ("C-c n n d" . 'denote-date)
   ("C-c n n s" . 'denote-subdirectory)
-      ("C-c n n t" . 'denote-type)
-      ("C-c n n x" . 'denote-org-extras-extract-org-subtree)
-      ("C-c n n c" . 'org-capture)
-      ("C-c n i" . 'denote-link-or-create)
-      ("C-c n I" . 'denote-org-extras-link-to-heading)
+	("C-c n n t" . 'denote-type)
+	("C-c n n x" . 'denote-org-extras-extract-org-subtree)
+	("C-c n n c" . 'org-capture)
+	("C-c n i" . 'denote-link-or-create)
+	("C-c n I" . 'denote-org-extras-link-to-heading)
   ("C-c n f" . 'denote-open-or-create-with-command)
-      ("C-c n j" . 'denote-journal-extras-new-entry)
-      ("C-c n b" . 'denote-find-backlink)
-      ("C-c n c" . 'denote-region)
-      ("C-c n B" . 'denote-backlinks)
+	("C-c n j" . 'denote-journal-extras-new-entry)
+	("C-c n b" . 'denote-find-backlink)
+	("C-c n c" . 'denote-region)
+	("C-c n B" . 'denote-backlinks)
   :config
   (setq denote-directory (file-name-concat org-directory "denote/"))
 
-      ;; setup interactive prompt for note creation
-      (setq denote-prompts '(title keywords template))
+	;; setup interactive prompt for note creation
+	(setq denote-prompts '(title keywords template))
 
-      ;; use org's date selection interface for denote
-      (setq denote-date-prompt-use-org-read-date t)
+	;; use org's date selection interface for denote
+	(setq denote-date-prompt-use-org-read-date t)
 
-      ;; templates
-      (setq denote-templates
-  			      '((plain . "* ")
-  				      (memo . "* Memo\n")
-  				      (summary . "* Source\n\n* Summary\n")
-  				      (review . ,(concat "* Info"
-  												       "\n\n"
-  												       "* Review"
-  												       "\n"))))
+	;; templates
+	(setq denote-templates
+				'((plain . "* ")
+					(memo . "* Memo\n")
+					(summary . "* Source\n\n* Summary\n")
+					(review . ,(concat "* Info"
+													 "\n\n"
+													 "* Review"
+													 "\n"))))
 
-      ;; org-capture integration
-      (with-eval-after-load 'org-capture
-  	      (add-to-list 'org-capture-templates
-  							       '("n" "New note (with Denote)" plain
-  								       (file denote-last-path)
-  								       #'denote-org-capture
-  								       :no-save t
-  								       :immediate-finish nil
-  								       :kill-buffer t
-  								       :jump-to-captured t)))
+	;; org-capture integration
+	(with-eval-after-load 'org-capture
+		(add-to-list 'org-capture-templates
+								 '("n" "New note (with Denote)" plain
+									 (file denote-last-path)
+									 #'denote-org-capture
+									 :no-save t
+									 :immediate-finish nil
+									 :kill-buffer t
+									 :jump-to-captured t)))
 
-      ;; call org-insert-structure-template
-      ;; when in org-mode after ~denote-region~
-      (defun my-denote-region-org-structure-template (_beg _end)
+	;; call org-insert-structure-template
+	;; when in org-mode after ~denote-region~
+	(defun my-denote-region-org-structure-template (_beg _end)
   (when (derived-mode-p 'org-mode)
     (activate-mark)
     (call-interactively 'org-insert-structure-template)))
 
-      (add-hook 'denote-region-after-new-note-functions
-  					      #'my-denote-region-org-structure-template)
+	(add-hook 'denote-region-after-new-note-functions
+						#'my-denote-region-org-structure-template)
 
-      ;; Exclude assets folders from operations
-      (setq denote-excluded-directories-regexp (rx (| "data" "ltximg")))
+	;; Exclude assets folders from operations
+	(setq denote-excluded-directories-regexp (rx (| "data" "ltximg")))
 
-      ;; show context in backlink buffer
-      (setq denote-backlinks-show-context t)
-      ;; show the backlink buffer in the left side window
-      (setq denote-link-backlinks-display-buffer-action
+	;; show context in backlink buffer
+	(setq denote-backlinks-show-context t)
+	;; show the backlink buffer in the left side window
+	(setq denote-link-backlinks-display-buffer-action
       '((display-buffer-reuse-window
          display-buffer-in-side-window)
         (side . left)
         (slot . 99)
         (window-width . 0.3)))
 
-      ;; dired integration
-      (setq denote-dired-directories
-  			      (list denote-directory
-  						      (expand-file-name "project" denote-directory)
-  						      (expand-file-name "journal" denote-directory)))
+	;; dired integration
+	(setq denote-dired-directories
+				(list denote-directory
+							(expand-file-name "project" denote-directory)
+							(expand-file-name "journal" denote-directory)))
 
-      (add-hook 'dired-mode-hook #'denote-dired-mode-in-directories)
+	(add-hook 'dired-mode-hook #'denote-dired-mode-in-directories)
 
-      ;; automatically rename denote buffers
-      (denote-rename-buffer-mode 1)
-      )
+	;; automatically rename denote buffers
+	(denote-rename-buffer-mode 1)
+	)
 
 (use-package org-appear
   :straight (org-appear
-  	   :type git
-  	   :host github
-  	   :repo "awth13/org-appear")
+	     :type git
+	     :host github
+	     :repo "awth13/org-appear")
   :hook
   (org-mode . org-appear-mode)
   (org-mode . (lambda ()
-  	      (add-hook 'meow-insert-enter-hook
-  			#'org-appear-manual-start
-  			nil
-  			t)
-  	      (add-hook 'meow-insert-exit-hook
-  			#'org-appear-manual-stop
-  			nil
-  			t)))  		      
+		(add-hook 'meow-insert-enter-hook
+			  #'org-appear-manual-start
+			  nil
+			  t)
+		(add-hook 'meow-insert-exit-hook
+			  #'org-appear-manual-stop
+			  nil
+			  t)))  		      
   :custom
   (org-appear-autolinks t)
   (org-appear-trigger 'manual))
@@ -1667,34 +1661,34 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (markdown-mode . toc-org-mode))
 
 (use-package org-noter
-      :straight t
-      :defer t
-      :requires (org pdf-tools)
-      :after pdf-tools)
+	:straight t
+	:defer t
+	:requires (org pdf-tools)
+	:after pdf-tools)
 
 (use-package org-download
-      :straight t
-      :hook ((dired-mode org-mode) . org-download-enable)
-      :config
-      (setq org-download-method 'attach
-  			      org-download-screenshot-method "grimblast save area %s"))
+	:straight t
+	:hook ((dired-mode org-mode) . org-download-enable)
+	:config
+	(setq org-download-method 'attach
+				org-download-screenshot-method "grimblast save area %s"))
 
 (use-package rustic
   :straight t
   :mode ("\\.rs$" . rustic-mode)
   :config
-  (setq rustic-lsp-client 'eglot)
+  (setq rustic-lsp-client 'lsp-mode)
   (setq rustic-indent-method-chain t)
-  (setq rustic-format-on-save t)
-      (setq rustic-rustfmt-bin-remote "rustfmt"
-  			      rustic-rustfmt-args '("--edition=2021"))
+  (setq rustic-format-on-save nil) ;; use lsp-format instead
+	(setq rustic-rustfmt-bin-remote "rustfmt"
+				rustic-rustfmt-args "--edition=2021")
   )
 
 (add-to-list 'major-mode-remap-alist
-  	   '(conf-toml-mode . toml-ts-mode))
+	     '(conf-toml-mode . toml-ts-mode))
 
 (add-to-list 'auto-mode-alist
-  	   '("\\.ya?ml$" . yaml-ts-mode))
+	     '("\\.ya?ml$" . yaml-ts-mode))
 
 (use-package yaml-ts-mode
   :custom
@@ -1722,40 +1716,40 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :init
   ;; Open python files in tree-sitter mode.
   (add-to-list 'major-mode-remap-alist '(python-mode . python-ts-mode))
-      :hook
-      (python-mode . eglot-ensure)
+	:hook
+	(python-mode . eglot-ensure)
   :config
   (setq python-indent-offset 4)
   (setq python-indent-guess-indent-offset nil)
-      )
+	)
 
 (use-package slint-mode
-      :straight t)
+	:straight t)
 
 (use-package ess
-      :straight t
-      :init
-      (setq ess-style 'RStudio)
-      :mode
-      (("\\.[rR]\\'" . R-mode)))
+	:straight t
+	:init
+	(setq ess-style 'RStudio)
+	:mode
+	(("\\.[rR]\\'" . R-mode)))
 
 ;; Setup polymode for Rmarkdown
 (use-package polymode)
 (use-package poly-markdown
-      :straight t
-      :config
-      (add-to-list 'auto-mode-alist '("\\.md$" . poly-markdown-mode)))
+	:straight t
+	:config
+	(add-to-list 'auto-mode-alist '("\\.md$" . poly-markdown-mode)))
 (use-package poly-R
-      :straight t
-      :config
-      (add-to-list 'auto-mode-alist '("\\.Snw$" . poly-noweb+r-mode))
-      (add-to-list 'auto-mode-alist '("\\.Rnw$" . poly-noweb+r-mode))
-      (add-to-list 'auto-mode-alist '("\\.Rmd$" . poly-markdown+r-mode)))
+	:straight t
+	:config
+	(add-to-list 'auto-mode-alist '("\\.Snw$" . poly-noweb+r-mode))
+	(add-to-list 'auto-mode-alist '("\\.Rnw$" . poly-noweb+r-mode))
+	(add-to-list 'auto-mode-alist '("\\.Rmd$" . poly-markdown+r-mode)))
 
 (add-to-list 'auto-mode-alist '("\\.tcss\\'" . css-ts-mode))
 
 (use-package graphql-mode
-      :straight t)
+	:straight t)
 
 ;; Integrate with nix-direnv
 ;; I am using devenv to manage project environment
@@ -1796,31 +1790,31 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 (use-package gptel
   :straight t
   :config
-      (defun +get-key-from-pass (key)
-  	      "Get the key from pass-store."
-  	      (let ((pass (shell-command-to-string (format "pass show %s" key))))
-  		      (string-trim-right pass))
-  	      )
+	(defun +get-key-from-pass (key)
+		"Get the key from pass-store."
+		(let ((pass (shell-command-to-string (format "pass show %s" key))))
+			(string-trim-right pass))
+		)
   (gptel-make-ollama
    "Ollama"
    :host "localhost:11434"
    :models '("zephyr:latest")
    :stream t)
 
-      (setq gptel-default-mode 'org-mode)
-      (setq-default
-       gptel-model "claude-3-opus-20240229"
-       gptel-backend 	(gptel-make-anthropic "Claude"
-  									      :stream t
-  									      :key (+get-key-from-pass "anthropic"))
-       )
-      )
+	(setq gptel-default-mode 'org-mode)
+	(setq-default
+	 gptel-model "claude-3-opus-20240229"
+	 gptel-backend 	(gptel-make-anthropic "Claude"
+										:stream t
+										:key (+get-key-from-pass "anthropic"))
+	 )
+	)
 
 ;; Build by NixOS
 (use-package telega
   :straight t
-      :config
-      (setq telega-emoji-font-family "Noto Color Emoji")
+	:config
+	(setq telega-emoji-font-family "Noto Color Emoji")
   )
 
 (defun pinentry-emacs (desc prompt ok error)
