@@ -1450,33 +1450,32 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 * UI
 ** Theme
 #+begin_src emacs-lisp
-  (use-package ef-themes
-    :straight t
-  	:custom-face
-  	(variable-pitch ((t (:family "LXGW WenKai"))))
-  	(fixed-pitch ((t (:family "Mono Lisa"))))
-    :config
-    (setq ef-themes-to-toggle '(ef-maris-light ef-maris-dark))
-    (setq ef-themes-mixed-fonts t
-  				ef-themes-variable-pitch-ui t)
-  	(setq ef-themes-headings ; read the manual's entry or the doc string
-        '((0 variable-pitch light)
-          (1 variable-pitch light)
-          (2 variable-pitch regular)
-          (3 variable-pitch regular)
-          (4 variable-pitch regular)
-          (5 variable-pitch) ; absence of weight means `bold'
-          (6 variable-pitch)
-          (7 variable-pitch)
-          (t variable-pitch)))
-    )
+  (use-package doom-themes
+  	:straight t
+  	:config
+  	;; Global settings (defaults)
+  	(setq doom-themes-enable-bold t
+  				doom-themes-enable-italic t)
 
-  (defun yu/load-theme () (load-theme 'ef-maris-dark t))
+  	;; Corrects (and improves) org-mode's native fontification.
+  	(doom-themes-org-config)
+  	;; Enable doom theme on treemacs
+  	(setq doom-themes-treemacs-theme "doom-atom")
+  	(doom-themes-treemacs-config)
+  	;; Enable flashing mode-line on errors
+  	(doom-themes-visual-bell-config)
+
+  	;; Custom faces
+  	(custom-set-faces
+  	 '(variable-pitch ((t (:family "LXGW WenKai" :height 128))))
+  	 '(org-block ((t (:inherit fixed-pitch)))))
+  	)
+
+  (defun yu/load-theme () (load-theme 'doom-nord t))
 
   (if (daemonp)
-    (add-hook 'server-after-make-frame-hook
-         #'yu/load-theme)
-   (yu/load-theme))
+  		(add-hook 'server-after-make-frame-hook #'yu/load-theme)
+  	(yu/load-theme))
 #+end_src
 ** Mode line
 #+begin_src emacs-lisp
