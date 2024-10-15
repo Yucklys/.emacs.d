@@ -3,102 +3,6 @@
 #+auto_tangle: t
 #+STARTUP: content
 
-* TOC                                                                   :TOC:
-- [[#early-init][Early init]]
-- [[#package-setup][Package Setup]]
-  - [[#straight--use-package][Straight & use-package]]
-  - [[#startup-diagnostic][Startup diagnostic]]
-  - [[#auto-tangle][Auto tangle]]
-  - [[#cleanup][Cleanup]]
-  - [[#emacs][Emacs]]
-  - [[#magit][Magit]]
-  - [[#tramp][Tramp]]
-- [[#completion][Completion]]
-  - [[#corfu][Corfu]]
-  - [[#vertico][Vertico]]
-  - [[#orderless][Orderless]]
-  - [[#marginalia][Marginalia]]
-  - [[#embark][Embark]]
-  - [[#tempel][Tempel]]
-  - [[#yasnippet][YASnippet]]
-- [[#search][Search]]
-  - [[#isearch][Isearch]]
-  - [[#occur-buffer][Occur buffer]]
-- [[#helper-functions][Helper functions]]
-  - [[#consult][Consult]]
-  - [[#dash][Dash]]
-  - [[#my-functions][My functions]]
-- [[#save-and-persistence][Save and persistence]]
-  - [[#savehist][Savehist]]
-  - [[#recentf][Recentf]]
-- [[#prog][Prog]]
-  - [[#checker][Checker]]
-  - [[#xref][xref]]
-  - [[#lsp][LSP]]
-  - [[#copilot][Copilot]]
-- [[#editor][Editor]]
-  - [[#meow][Meow]]
-  - [[#parenthesis][Parenthesis]]
-  - [[#undo-redo][Undo-Redo]]
-  - [[#code-folding][Code folding]]
-  - [[#rime][Rime]]
-  - [[#smart-input-source][Smart Input Source]]
-  - [[#quail-dvorak-layout][Quail Dvorak layout]]
-- [[#shell][Shell]]
-  - [[#eshell][eshell]]
-  - [[#vterm][vterm]]
-- [[#enhancement][Enhancement]]
-  - [[#which-key][Which-key]]
-  - [[#ace-window][ace-window]]
-  - [[#projectile][Projectile]]
-  - [[#dirvish][Dirvish]]
-  - [[#treemacs][Treemacs]]
-  - [[#imenu][imenu]]
-  - [[#garbage-collection][Garbage Collection]]
-- [[#ui][UI]]
-  - [[#theme][Theme]]
-  - [[#mode-line][Mode line]]
-  - [[#dashboard][Dashboard]]
-  - [[#icons][Icons]]
-  - [[#page-break-lines][Page break lines]]
-  - [[#rainbow-delimiters][Rainbow delimiters]]
-  - [[#line-numbers][Line numbers]]
-  - [[#pulsar][Pulsar]]
-  - [[#font][Font]]
-  - [[#emoji][Emoji]]
-  - [[#breadcrumb][Breadcrumb]]
-  - [[#spacious-padding][Spacious padding]]
-  - [[#workspace][Workspace]]
-- [[#language][Language]]
-  - [[#tree-sitter][Tree-sitter]]
-  - [[#markdown][Markdown]]
-  - [[#vue][Vue]]
-  - [[#react][React]]
-  - [[#org][Org]]
-  - [[#rust][Rust]]
-  - [[#toml][Toml]]
-  - [[#yaml][YAML]]
-  - [[#nix][Nix]]
-  - [[#nushell][Nushell]]
-  - [[#just][Just]]
-  - [[#haskell][Haskell]]
-  - [[#lua][Lua]]
-  - [[#yuck][yuck]]
-  - [[#python][Python]]
-  - [[#slint][Slint]]
-  - [[#r][R]]
-  - [[#web-developing][Web developing]]
-  - [[#graphql][GraphQL]]
-- [[#environment][Environment]]
-- [[#tools][Tools]]
-  - [[#pdf][PDF]]
-  - [[#rss][RSS]]
-  - [[#web][Web]]
-  - [[#anki][Anki]]
-  - [[#gpt][GPT]]
-  - [[#telega][Telega]]
-  - [[#password-management][Password management]]
-
 * Early init
 Some early init code to run before everything started.
 #+begin_src emacs-lisp :tangle ./early-init.el
@@ -873,6 +777,12 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
   (use-package lsp-mode
   	:straight t
     :commands lsp-deferred
+  	:bind
+  	(:map lsp-mode-map
+  				("C-c c a" . 'lsp-execute-code-action)
+  				("C-c c r" . 'lsp-rename)
+  				("C-c c f" . 'lsp-format-buffer)
+  				("C-c c F" . 'lsp-format-region))
   	:custom
   	(lsp-completion-provider :none)
     :init
@@ -1009,7 +919,8 @@ Use ~copilot~ to provide code completion. It is a language server that provides 
        '("<f5>" . consult-kmacro) ; Consult kmacro
        '("<escape>" . ignore)))
     (meow-setup)
-    (meow-global-mode 1))
+    (meow-global-mode 1)
+  	)
 #+end_src
 ** Parenthesis
 #+begin_src emacs-lisp
@@ -1169,8 +1080,11 @@ Another workaround of using IM inside Emacs. SIS add predicates and switches for
     (sis-global-context-mode t)
     ;; enable the /inline english/ mode for all buffers
     (sis-global-inline-mode t)
+  	;; enable the /cursor color/ mode
+    (sis-global-cursor-color-mode t)
     ;; support for meow
     (add-hook 'meow-insert-exit-hook #'sis-set-english)
+  	(add-hook 'meow-vterm-insert-mode-hook #'sis-set-english)
     (add-to-list 'sis-context-hooks 'meow-insert-enter-hook))
 #+end_src
 ** Quail Dvorak layout
@@ -1194,47 +1108,38 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   ;; Use pcomplete to generate shell completion
   (use-package pcmpl-args
     :straight t)
+
+  (use-package eshell-toggle
+  	:straight (eshell-toggle :type git :host github :repo "4DA/eshell-toggle")
+  	:bind ("C-~" . eshell-toggle)
+  	:custom
+  	(eshell-toggle-find-project-root-package t) ;; for projectile
+  	)
 #+end_src
 ** vterm
 #+begin_src emacs-lisp
   (use-package vterm
-    :straight t
-    :bind
-    (("C-c o T" . 'vterm)
-     :map vterm-mode-map
-     ("C-q" . 'vterm-send-next-key))
-    
-    :config
-    (setq vterm-kill-buffer-on-exit t)
-    (setq vterm-shell "nu")
-    (add-hook 'vterm-mode-hook
-              (lambda ()
-                (set (make-local-variable 'buffer-face-mode-face)
-  		   '(:height 140 :family "Iosevka Nerd Font"))
-                (buffer-face-mode t)))
-    )
+  	:straight t
+  	;; libvterm is built by NixOS
+  	:config
+  	(setq vterm-shell "/run/current-system/sw/bin/nu")
+  	)
 
-  (use-package vterm-toggle
-    :straight t
-    :bind
-    (("C-c o t" . 'vterm-toggle)
-     :map vterm-mode-map
-     ("M-n" . 'vterm-toggle-forward)
-     ("M-p" . 'vterm-toggle-backward))
-    :config
-    (setq vterm-toggle-fullscreen-p nil)
-    (add-to-list 'display-buffer-alist
-               '((lambda (buffer-or-name _)
-                     (let ((buffer (get-buffer buffer-or-name)))
-                       (with-current-buffer buffer
-                         (or (equal major-mode 'vterm-mode)
-                             (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-                 (display-buffer-reuse-window display-buffer-in-side-window)
-                 (side . bottom)
-                 ;;(dedicated . t) ;dedicated is supported in emacs27
-                 (reusable-frames . visible)
-                 (window-height . 0.4)))
-    )
+  (use-package meow-vterm
+  	:straight (meow-vterm :type git :host github :repo "45mg/meow-vterm")
+  	:config
+  	(add-hook 'vterm-mode-hook #'meow-vterm-mode)
+    (meow-define-keys 'vterm-normal
+      '("y" . meow-vterm-yank)
+      '("Y" . meow-vterm-yank-pop)
+      '("u" . meow-vterm-undo)
+      '("x" . meow-vterm-yank)
+      '("X" . meow-vterm-yank-pop)
+      '("s" . meow-vterm-kill)
+      '("k" . meow-vterm-delete)
+      '("D" . meow-vterm-backspace)
+      '("G" . ignore)) ; see below
+  	)
 #+end_src
 * Enhancement
 ** Which-key
@@ -1641,7 +1546,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 #+begin_src emacs-lisp
   ;; Set up font
   (add-to-list 'default-frame-alist
-               '(font . "MonoLisa-14"))
+               '(font . "MonoLisa-12"))
 
   (use-package cnfonts
     :straight t

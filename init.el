@@ -626,6 +626,12 @@
 (use-package lsp-mode
 	:straight t
   :commands lsp-deferred
+	:bind
+	(:map lsp-mode-map
+				("C-c c a" . 'lsp-execute-code-action)
+				("C-c c r" . 'lsp-rename)
+				("C-c c f" . 'lsp-format-buffer)
+				("C-c c F" . 'lsp-format-region))
 	:custom
 	(lsp-completion-provider :none)
   :init
@@ -756,7 +762,8 @@
      '("<f5>" . consult-kmacro) ; Consult kmacro
      '("<escape>" . ignore)))
   (meow-setup)
-  (meow-global-mode 1))
+  (meow-global-mode 1)
+	)
 
 (use-package electric-pair
   :hook
@@ -902,8 +909,11 @@
   (sis-global-context-mode t)
   ;; enable the /inline english/ mode for all buffers
   (sis-global-inline-mode t)
+	;; enable the /cursor color/ mode
+  (sis-global-cursor-color-mode t)
   ;; support for meow
   (add-hook 'meow-insert-exit-hook #'sis-set-english)
+	(add-hook 'meow-vterm-insert-mode-hook #'sis-set-english)
   (add-to-list 'sis-context-hooks 'meow-insert-enter-hook))
 
 ;; Change keyboard layout
@@ -922,44 +932,35 @@
 (use-package pcmpl-args
   :straight t)
 
-(use-package vterm
-  :straight t
-  :bind
-  (("C-c o T" . 'vterm)
-   :map vterm-mode-map
-   ("C-q" . 'vterm-send-next-key))
-  
-  :config
-  (setq vterm-kill-buffer-on-exit t)
-  (setq vterm-shell "nu")
-  (add-hook 'vterm-mode-hook
-            (lambda ()
-              (set (make-local-variable 'buffer-face-mode-face)
-		   '(:height 140 :family "Iosevka Nerd Font"))
-              (buffer-face-mode t)))
-  )
+(use-package eshell-toggle
+	:straight (eshell-toggle :type git :host github :repo "4DA/eshell-toggle")
+	:bind ("C-~" . eshell-toggle)
+	:custom
+	(eshell-toggle-find-project-root-package t) ;; for projectile
+	)
 
-(use-package vterm-toggle
-  :straight t
-  :bind
-  (("C-c o t" . 'vterm-toggle)
-   :map vterm-mode-map
-   ("M-n" . 'vterm-toggle-forward)
-   ("M-p" . 'vterm-toggle-backward))
-  :config
-  (setq vterm-toggle-fullscreen-p nil)
-  (add-to-list 'display-buffer-alist
-             '((lambda (buffer-or-name _)
-                   (let ((buffer (get-buffer buffer-or-name)))
-                     (with-current-buffer buffer
-                       (or (equal major-mode 'vterm-mode)
-                           (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-               (display-buffer-reuse-window display-buffer-in-side-window)
-               (side . bottom)
-               ;;(dedicated . t) ;dedicated is supported in emacs27
-               (reusable-frames . visible)
-               (window-height . 0.4)))
-  )
+(use-package vterm
+	:straight t
+	;; libvterm is built by NixOS
+	:config
+	(setq vterm-shell "/run/current-system/sw/bin/nu")
+	)
+
+(use-package meow-vterm
+	:straight (meow-vterm :type git :host github :repo "45mg/meow-vterm")
+	:config
+	(add-hook 'vterm-mode-hook #'meow-vterm-mode)
+  (meow-define-keys 'vterm-normal
+    '("y" . meow-vterm-yank)
+    '("Y" . meow-vterm-yank-pop)
+    '("u" . meow-vterm-undo)
+    '("x" . meow-vterm-yank)
+    '("X" . meow-vterm-yank-pop)
+    '("s" . meow-vterm-kill)
+    '("k" . meow-vterm-delete)
+    '("D" . meow-vterm-backspace)
+    '("G" . ignore)) ; see below
+	)
 
 ;; Show my keybindings
 (use-package which-key
@@ -1332,7 +1333,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
 ;; Set up font
 (add-to-list 'default-frame-alist
-             '(font . "MonoLisa-14"))
+             '(font . "MonoLisa-12"))
 
 (use-package cnfonts
   :straight t
