@@ -739,15 +739,15 @@
      '("N" . meow-next-expand)
      '("o" . meow-block)
      '("O" . meow-to-block)
-     '("p" . meow-prev)
-     '("P" . meow-prev-expand)
+     '("t" . meow-prev)
+     '("T" . meow-prev-expand)
      '("q" . meow-quit)
      '("Q" . consult-goto-line) ; Consult goto-line with live preview
      '("r" . meow-replace)
      '("R" . meow-swap-grab)
-     '("s" . meow-search)
-     '("t" . meow-right)
-     '("T" . meow-right-expand)
+     '("p" . meow-search)
+     '("s" . meow-right)
+     '("S" . meow-right-expand)
      '("u" . meow-undo)
      '("U" . undo-redo)
      '("v" . meow-visit)
@@ -779,6 +779,8 @@
   (puni-global-mode)
   :bind (("C-c e (" . 'puni-wrap-round)
 	 ("C-c e )" . 'puni-wrap-round)
+	 ("C-c e {" . 'puni-wrap-curly)
+	 ("C-c e }" . 'puni-wrap-curly)
 	 ("C-c e [" . 'puni-wrap-square)
 	 ("C-c e ]" . 'puni-wrap-square)
 	 ("C-h" . 'puni-force-delete))
@@ -940,7 +942,6 @@
 	)
 
 (use-package vterm
-	:straight t
 	;; libvterm is built by NixOS
 	:config
 	(setq vterm-shell "/run/current-system/sw/bin/nu")
@@ -1179,7 +1180,14 @@ targets."
 	 '(org-block ((t (:inherit fixed-pitch)))))
 	)
 
-(defun yu/load-theme () (load-theme 'doom-nord t))
+(use-package ef-themes
+	:straight t
+	:config
+	(setq ef-themes-to-toggle '(ef-summer ef-winter))
+	(setq ef-themes-mixed-fonts t
+				ef-themes-variable-pitch-ui t))
+
+(defun yu/load-theme () (load-theme 'ef-winter t))
 
 (if (daemonp)
 		(add-hook 'server-after-make-frame-hook #'yu/load-theme)
@@ -1441,9 +1449,66 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (require 'bufler-workspace-tabs)
   )
 
+(use-package hl-todo
+	:straight t
+	:config
+	(global-hl-todo-mode)
+	(defun my-ef-themes-hl-todo-faces ()
+		"Configure `hl-todo-keyword-faces' with Ef themes colors.
+The exact color values are taken from the active Ef theme."
+		(ef-themes-with-colors
+			(setq hl-todo-keyword-faces
+						`(("HOLD" . ,yellow)
+							("TODO" . ,red)
+							("NEXT" . ,blue)
+							("THEM" . ,magenta)
+							("PROG" . ,cyan-warmer)
+							("OKAY" . ,green-warmer)
+							("DONT" . ,yellow-warmer)
+							("FAIL" . ,red-warmer)
+							("BUG" . ,red-warmer)
+							("DONE" . ,green)
+							("NOTE" . ,blue-warmer)
+							("KLUDGE" . ,cyan)
+							("HACK" . ,cyan)
+							("TEMP" . ,red)
+							("FIXME" . ,red-warmer)
+							("REVIEW" . ,red)
+							("DEPRECATED" . ,yellow)))))
+
+	(add-hook 'ef-themes-post-load-hook #'my-ef-themes-hl-todo-faces)
+	)
+
+(use-package magit-todos
+	:after magit
+	:straight t
+	:config (magit-todos-mode 1))
+
 (use-package treesit
-  :config
-  )
+	:config
+	(setq treesit-language-source-alist
+   '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
+     (c . ("https://github.com/tree-sitter/tree-sitter-c"))
+     (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
+     (css . ("https://github.com/tree-sitter/tree-sitter-css"))
+     (cmake . ("https://github.com/uyha/tree-sitter-cmake"))
+     (go . ("https://github.com/tree-sitter/tree-sitter-go"))
+     (html . ("https://github.com/tree-sitter/tree-sitter-html"))
+     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
+     (json . ("https://github.com/tree-sitter/tree-sitter-json"))
+     (julia . ("https://github.com/tree-sitter/tree-sitter-julia"))
+     (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
+     (make . ("https://github.com/alemuller/tree-sitter-make"))
+     (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "master" "ocaml/src"))
+     (python . ("https://github.com/tree-sitter/tree-sitter-python"))
+     (php . ("https://github.com/tree-sitter/tree-sitter-php"))
+     (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src"))
+     (tsx . ("https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src"))
+     (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
+     (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
+     (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
+     (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
+     (zig . ("https://github.com/GrayJack/tree-sitter-zig")))))
 
 (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
 				dockerfile-ts-mode))
@@ -1478,6 +1543,9 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
       ;; ol-rmail
       ;; ol-eww
       ))
+	:bind
+	(("C-c n l" . org-store-link)
+	 ("C-c n a" . org-agenda))
   :custom-face
   (org-level-1 ((t (:height 1.4))))
   (org-level-2 ((t (:height 1.3))))
@@ -1489,6 +1557,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   ;; Org files
   (org-directory "~/org/") ; Note directory
   (org-default-notes-file (concat org-directory "inbox.org")) ; Default entry point
+	(org-agenda-files (list org-directory)) ; Agenda files
 
   ;; Useful settings
   (org-startup-folded (quote overview)) ; Fold all by default
@@ -1673,8 +1742,13 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 	(setq org-download-method 'attach
 				org-download-screenshot-method "grimblast save area %s"))
 
+(use-package rust-mode
+	:init
+	(setq rust-mode-treesitter-derive t))
+
 (use-package rustic
   :straight t
+	:after rust-mode
   :mode ("\\.rs$" . rustic-mode)
   :config
   (setq rustic-lsp-client 'lsp-mode)
@@ -1806,8 +1880,36 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 	 gptel-model "claude-3-opus-20240229"
 	 gptel-backend 	(gptel-make-anthropic "Claude"
 										:stream t
-										:key (+get-key-from-pass "anthropic"))
+										:key (+get-key-from-pass "api/anthropic"))
 	 )
+	)
+
+(defun get-api-key (key-name)
+  "Retrieve the API key from pass based on KEY-NAME.
+Example usage: (get-api-key \"api/claude\") or (get-api-key \"api/openai\")"
+  (condition-case err
+      (let ((key (string-trim (shell-command-to-string (format "pass show %s" key-name)))))
+        (if (string-match-p "^Error:" key)
+            (progn
+              (message "Failed to retrieve API key %s: %s" key-name key)
+              nil)
+          key))
+    (error
+     (message "Error retrieving API key %s: %s" key-name (error-message-string err))
+     nil)))
+
+(use-package aidermacs
+	:straight t
+	:bind (("C-c a" . aidermacs-transient-menu))
+	:config
+	(setenv "ANTHROPIC_API_KEY" (get-api-key "api/anthropic"))
+	(setenv "OPENROUTER_API_KEY" (get-api-key "api/openrouter"))
+	;; use Shift + Enter to change line
+	(setq aidermacs-vterm-multiline-newline-key "S-<return>")
+	:custom
+	(aidermacs-use-architect-mode t)
+	(aidermacs-default-model "claude-3-7-sonnet-20250219")
+	(aidermacs-backend 'vterm)
 	)
 
 ;; Build by NixOS

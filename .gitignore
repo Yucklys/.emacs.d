@@ -3,3 +3,5 @@ elpa/
 straight/
 eln-cache/
 .cache/
+.aider*
+.env
