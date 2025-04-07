@@ -40,7 +40,7 @@
   (when (fboundp 'startup-redirect-eln-cache)
     (startup-redirect-eln-cache
      (convert-standard-filename
-	(expand-file-name  "var/eln-cache/" user-emacs-directory)))))
+(expand-file-name  "var/eln-cache/" user-emacs-directory)))))
 
 ;; Make native compilation silent and prune its cache.
 (when (native-comp-available-p)
@@ -136,11 +136,17 @@
    "C-c g S"   ("Git stage file" . magit-stage-file)
    "C-c g U"   ("Git unstage file" . magit-unstage-file)
    )
+	:bind (:map magit-mode-map
+              ("t" . magit-previous-line)
+              ("n" . magit-next-line)
+              ("p" . magit-section-toggle)
+              )
   :config
   (setq magit-display-buffer-function
       #'magit-display-buffer-fullframe-status-v1)
   (setq magit-bury-buffer-function
-	#'magit-restore-window-configuration)
+				(lambda (&optional buffer-to-bury)
+					(magit-mode-quit-window t)))
   )
 
 ;; Set PATH for remote machine respect to user's PATH
@@ -1341,20 +1347,21 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
 
 ;; Set up font
 (add-to-list 'default-frame-alist
-             '(font . "MonoLisa-12"))
+             '(font . "Maple Mono SC NF-12"))
 
-(use-package cnfonts
-  :straight t
-  :bind
-  ("C--" . #'cnfonts-decrease-fontsize)
-  ("C-=" . #'cnfonts-increase-fontsize)
-  :config
-  (setq cnfonts-use-face-font-rescale t)
-  (setq cnfonts-personal-fontnames '(("Mono Lisa")
-				     ("LXGW WenKai Mono" "LXGW WenKai"
-				      "LXGW WenKai Screen")))
-  (cnfonts-mode 1)
-  )
+;; (use-package cnfonts
+;;   :straight t
+;;   :bind
+;;   ("C--" . #'cnfonts-decrease-fontsize)
+;;   ("C-=" . #'cnfonts-increase-fontsize)
+;;   :config
+;;   (setq cnfonts-use-face-font-rescale t)
+;;   (setq cnfonts-personal-fontnames '(("Mono Lisa")
+;; 				     ("LXGW WenKai Mono" "LXGW WenKai"
+;; 				      "LXGW WenKai Screen")
+;; 						 ("Maple Mono SC NF")))
+;;   (cnfonts-mode 1)
+;;   )
 
 ;; Add spacing between CJK and ASCII characters
 (use-package pangu-spacing
