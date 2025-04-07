@@ -1215,6 +1215,11 @@ targets."
 
 (use-package dashboard
   :straight t
+	:bind (:map dashboard-mode-map
+							("n" . dashboard-next-line)
+							("t" . dashboard-previous-line)
+							("N" . dashboard-next-section)
+							("T" . dashboard-previous-section))
   :custom
   (dashboard-startup-banner '2)
   (dashboard-projects-backend 'projectile) ; Get projects from projectile
