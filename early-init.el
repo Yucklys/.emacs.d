@@ -51,6 +51,9 @@
 (setq file-name-handler-alist nil
       vc-handled-backends nil)
 
+;; tweak native compilation settingss
+(setq native-comp-speed 2)
+
 (add-hook 'emacs-startup-hook
           (lambda ()
             (setq gc-cons-threshold (* 1024 1024 20)

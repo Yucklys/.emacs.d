@@ -123,24 +123,22 @@
 (use-package magit
   :straight t
   :bind
-  ("C-c g /"   ("Magit dispatch" . magit-dispatch)
-   "C-c g ."   ("Magit file dispatch" . magit-file-dispatch)
-   "C-c g '"   ("Forge dispatch" . forge-dispatch)
-   "C-c g g"   ("Magit status" . magit-status)
-   "C-c g G"   ("Magit status here" . magit-status-here)
-   "C-c g x"   ("Magit file delete" . magit-file-delete)
-   "C-c g B"   ("Magit blame" . magit-blame-addition)
-   "C-c g C"   ("Magit clone" . magit-clone)
-   "C-c g F"   ("Magit fetch" . magit-fetch)
-   "C-c g L"   ("Magit buffer log" . magit-log-buffer-file)
-   "C-c g S"   ("Git stage file" . magit-stage-file)
-   "C-c g U"   ("Git unstage file" . magit-unstage-file)
-   )
-	:bind (:map magit-mode-map
-              ("t" . magit-previous-line)
-              ("n" . magit-next-line)
-              ("p" . magit-section-toggle)
-              )
+  (("C-c g /" . magit-dispatch)
+   ("C-c g ." . magit-file-dispatch)
+   ("C-c g '" . forge-dispatch)
+   ("C-c g g" . magit-status)
+   ("C-c g G" . magit-status-here)
+   ("C-c g x" . magit-file-delete)
+   ("C-c g B" . magit-blame-addition)
+   ("C-c g C" . magit-clone)
+   ("C-c g F" . magit-fetch)
+   ("C-c g L" . magit-log-buffer-file)
+   ("C-c g S" . magit-stage-file)
+   ("C-c g U" . magit-unstage-file)
+	 :map magit-mode-map
+   ("t" . magit-previous-line)
+   ("n" . magit-next-line)
+   ("p" . magit-section-toggle))
   :config
   (setq magit-display-buffer-function
       #'magit-display-buffer-fullframe-status-v1)
@@ -663,6 +661,7 @@
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
+	:defer t
 	:hook (prog-mode . copilot-mode)
 	:bind (:map copilot-completion-map
 							("C-e" . +copilot-complete)
@@ -826,35 +825,6 @@
 					     "/git-rebase-todo\\'"))
   (undo-fu-session-global-mode))
 
-(defun toggle-selective-display (column)
-      (interactive "P")
-      (set-selective-display
-       (or column
-           (unless selective-display
-             (1+ (current-column))))))
-
-(defun toggle-hiding (column)
-      (interactive "P")
-      (if hs-minor-mode
-          (if (condition-case nil
-                  (hs-toggle-hiding)
-                (error t))
-              (hs-show-all))
-        (toggle-selective-display column)))
-
-(load-library "hideshow")
-(global-set-key (kbd "C-+") 'toggle-hiding)
-(global-set-key (kbd "C-\\") 'toggle-selective-display)
-
-(add-hook 'c-mode-common-hook   'hs-minor-mode)
-(add-hook 'emacs-lisp-mode-hook 'hs-minor-mode)
-(add-hook 'java-mode-hook       'hs-minor-mode)
-(add-hook 'lisp-mode-hook       'hs-minor-mode)
-(add-hook 'perl-mode-hook       'hs-minor-mode)
-(add-hook 'sh-mode-hook         'hs-minor-mode)
-;; Enable hideshow by default for all prog mode
-(add-hook 'prog-mode-hook 'hs-minor-mode)
-
 (use-package ts-fold
   :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
   :defer t
@@ -871,6 +841,7 @@
                   :host github
                   :repo "DogLooksGood/emacs-rime"
                   :files ("*.el" "Makefile" "lib.c"))
+	:disabled
   :custom
   (default-input-method "rime")
   ;; Custom lib path for NixOS
@@ -1215,6 +1186,8 @@ targets."
 
 (use-package dashboard
   :straight t
+	:init
+  (setq initial-buffer-choice 'dashboard-open)
 	:bind (:map dashboard-mode-map
 							("n" . dashboard-next-line)
 							("t" . dashboard-previous-line)
@@ -1234,11 +1207,11 @@ targets."
 				    (projects . "nf-oct-rocket")
 				    (bookmarks . "nf-oct-bookmark")))
   (add-to-list 'dashboard-items '(projects . 5) t)
-  (dashboard-setup-startup-hook)
   (setq initial-buffer-choice
         (lambda ()
-	  (get-buffer-create "*dashboard*") ; Show dashboard with emacsclient
+	  (get-buffer-create dashboard-buffer-name) ; Show dashboard with emacsclient
 	  ))
+  (dashboard-setup-startup-hook)
   )
 
 ;; All-the-icons
@@ -1754,13 +1727,8 @@ The exact color values are taken from the active Ef theme."
 	(setq org-download-method 'attach
 				org-download-screenshot-method "grimblast save area %s"))
 
-(use-package rust-mode
-	:init
-	(setq rust-mode-treesitter-derive t))
-
 (use-package rustic
   :straight t
-	:after rust-mode
   :mode ("\\.rs$" . rustic-mode)
   :config
   (setq rustic-lsp-client 'lsp-mode)
