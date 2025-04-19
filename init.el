@@ -627,37 +627,24 @@
   (setq xref-search-program 'ripgrep
 	xref-history-storage 'xref-window-local-history))
 
-(use-package lsp-mode
-	:straight t
-  :commands lsp-deferred
-	:bind
-	(:map lsp-mode-map
-				("C-c c a" . 'lsp-execute-code-action)
-				("C-c c r" . 'lsp-rename)
-				("C-c c f" . 'lsp-format-buffer)
-				("C-c c F" . 'lsp-format-region))
+(use-package eglot
+	:hook ((python-mode . eglot-ensure)
+	       (c-mode . eglot-ensure)
+	       (c++-mode . eglot-ensure)
+	       (java-mode . eglot-ensure)
+	       (js-mode . eglot-ensure)
+	       (typescript-mode . eglot-ensure)
+	       (go-mode . eglot-ensure)
+	       (ruby-mode . eglot-ensure)
+	       (rust-mode . eglot-ensure)
+	       (php-mode . eglot-ensure))
+	:bind (:map eglot-mode-map
+							("C-c c r" . eglot-rename)
+							("C-c c a" . eglot-code-actions)
+							("C-c c d" . xref-find-definitions))
 	:custom
-	(lsp-completion-provider :none)
-  :init
-  ;; set prefix for lsp-command-keymap (few alternatives - "C-l", "C-c l")
-  (setq lsp-keymap-prefix "C-c l")
-	;; use corfu for completion
-	(defun my/lsp-mode-setup-completion ()
-    (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
-          '(orderless))) ;; Configure orderless
-  :hook
-  (lsp-completion-mode . my/lsp-mode-setup-completion)
-	(rustic-mode . lsp-deferred)
-	:config
-	;; use breadcrumb instead
-	(setq lsp-headerline-breadcrumb-enable nil)
-	;; enable inlay hints
-	(setq lsp-inlay-hint-enable t)
+	(eglot-autoshutdown t)
 	)
-
-(use-package lsp-ui
-	:straight t
-	:commands lsp-ui-mode)
 
 (use-package copilot
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
@@ -1731,7 +1718,7 @@ The exact color values are taken from the active Ef theme."
   :straight t
   :mode ("\\.rs$" . rustic-mode)
   :config
-  (setq rustic-lsp-client 'lsp-mode)
+  (setq rustic-lsp-client 'eglot)
   (setq rustic-indent-method-chain t)
   (setq rustic-format-on-save nil) ;; use lsp-format instead
 	(setq rustic-rustfmt-bin-remote "rustfmt"
