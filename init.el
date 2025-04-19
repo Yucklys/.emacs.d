@@ -668,7 +668,7 @@
 							("M-f" . +copilot-complete-word))
 	:config
 	(setq copilot-indent-offset-warning-disable t)
-
+ 
 	(defun +copilot-complete ()
     (interactive)
     (or (copilot-accept-completion)
@@ -1888,7 +1888,7 @@ Example usage: (get-api-key \"api/claude\") or (get-api-key \"api/openai\")"
 	(setq aidermacs-vterm-multiline-newline-key "S-<return>")
 	:custom
 	(aidermacs-use-architect-mode t)
-	(aidermacs-default-model "claude-3-7-sonnet-20250219")
+	(aidermacs-default-model "openrouter/google/gemini-2.5-pro")
 	(aidermacs-backend 'vterm)
 	)
 

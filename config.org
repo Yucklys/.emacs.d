@@ -825,7 +825,7 @@ Use ~copilot~ to provide code completion. It is a language server that provides 
   							("M-f" . +copilot-complete-word))
   	:config
   	(setq copilot-indent-offset-warning-disable t)
-
+   
   	(defun +copilot-complete ()
       (interactive)
       (or (copilot-accept-completion)
@@ -2188,7 +2188,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   	(setq aidermacs-vterm-multiline-newline-key "S-<return>")
   	:custom
   	(aidermacs-use-architect-mode t)
-  	(aidermacs-default-model "claude-3-7-sonnet-20250219")
+  	(aidermacs-default-model "openrouter/google/gemini-2.5-pro")
   	(aidermacs-backend 'vterm)
   	)
 #+end_src
