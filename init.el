@@ -628,22 +628,17 @@
 	xref-history-storage 'xref-window-local-history))
 
 (use-package eglot
-	:hook ((python-mode . eglot-ensure)
-	       (c-mode . eglot-ensure)
-	       (c++-mode . eglot-ensure)
-	       (java-mode . eglot-ensure)
-	       (js-mode . eglot-ensure)
-	       (typescript-mode . eglot-ensure)
-	       (go-mode . eglot-ensure)
-	       (ruby-mode . eglot-ensure)
-	       (rust-mode . eglot-ensure)
-	       (php-mode . eglot-ensure))
+	:hook (prog-mode . eglot-ensure)
 	:bind (:map eglot-mode-map
 							("C-c c r" . eglot-rename)
 							("C-c c a" . eglot-code-actions)
-							("C-c c d" . xref-find-definitions))
+							("C-c c d" . xref-find-definitions)
+							("C-c c f" . eglot-format))
 	:custom
 	(eglot-autoshutdown t)
+	:config
+	(add-to-list 'eglot-server-programs
+							 '(nix-mode . ("nixd")))
 	)
 
 (use-package copilot
@@ -1875,7 +1870,7 @@ Example usage: (get-api-key \"api/claude\") or (get-api-key \"api/openai\")"
 	(setq aidermacs-vterm-multiline-newline-key "S-<return>")
 	:custom
 	(aidermacs-use-architect-mode t)
-	(aidermacs-default-model "openrouter/google/gemini-2.5-pro")
+	(aidermacs-default-model "anthropic/claude-3-7-sonnet-20250219")
 	(aidermacs-backend 'vterm)
 	)
 
