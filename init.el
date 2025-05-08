@@ -160,6 +160,15 @@
   (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
   (add-to-list 'tramp-remote-path "~/.cargo/bin"))
 
+(use-package exec-path-from-shell
+  :straight t
+  :config
+  (exec-path-from-shell-copy-env "PATH")
+  (when (memq window-system '(mac ns x))
+    (exec-path-from-shell-initialize))
+  (when (daemonp)
+    (exec-path-from-shell-initialize)))
+
 (use-package corfu
   :straight t
   :custom
@@ -642,6 +651,7 @@
 	)
 
 (use-package copilot
+  :unless (eq system-type 'darwin)
   :straight (:host github :repo "copilot-emacs/copilot.el" :files ("*.el"))
 	:defer t
 	:hook (prog-mode . copilot-mode)
@@ -901,10 +911,12 @@
 	)
 
 (use-package vterm
-	;; libvterm is built by NixOS
-	:config
-	(setq vterm-shell "/run/current-system/sw/bin/nu")
-	)
+  :straight t
+  :config
+  (if (eq system-type 'darwin)
+      (setq vterm-shell "/bin/zsh")
+    (setq vterm-shell "/run/current-system/sw/bin/nu"))
+  )
 
 (use-package meow-vterm
 	:straight (meow-vterm :type git :host github :repo "45mg/meow-vterm")
@@ -1306,8 +1318,11 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   (add-to-list 'pulsar-pulse-functions 'meow-search))
 
 ;; Set up font
-(add-to-list 'default-frame-alist
-             '(font . "Maple Mono SC NF-12"))
+(if (eq system-type 'gnu/linux)
+    (add-to-list 'default-frame-alist
+		 '(font . "Maple Mono SC NF-12"))
+  (add-to-list 'default-frame-alist
+	       '(font . "Maple Mono NF CN-12")))
 
 ;; (use-package cnfonts
 ;;   :straight t
@@ -1452,33 +1467,8 @@ The exact color values are taken from the active Ef theme."
 	:config (magit-todos-mode 1))
 
 (use-package treesit
-	:config
-	(setq treesit-language-source-alist
-   '((bash . ("https://github.com/tree-sitter/tree-sitter-bash"))
-     (c . ("https://github.com/tree-sitter/tree-sitter-c"))
-     (cpp . ("https://github.com/tree-sitter/tree-sitter-cpp"))
-     (css . ("https://github.com/tree-sitter/tree-sitter-css"))
-     (cmake . ("https://github.com/uyha/tree-sitter-cmake"))
-     (go . ("https://github.com/tree-sitter/tree-sitter-go"))
-     (html . ("https://github.com/tree-sitter/tree-sitter-html"))
-     (javascript . ("https://github.com/tree-sitter/tree-sitter-javascript"))
-     (json . ("https://github.com/tree-sitter/tree-sitter-json"))
-     (julia . ("https://github.com/tree-sitter/tree-sitter-julia"))
-     (lua . ("https://github.com/Azganoth/tree-sitter-lua"))
-     (make . ("https://github.com/alemuller/tree-sitter-make"))
-     (ocaml . ("https://github.com/tree-sitter/tree-sitter-ocaml" "master" "ocaml/src"))
-     (python . ("https://github.com/tree-sitter/tree-sitter-python"))
-     (php . ("https://github.com/tree-sitter/tree-sitter-php"))
-     (typescript . ("https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src"))
-     (tsx . ("https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src"))
-     (ruby . ("https://github.com/tree-sitter/tree-sitter-ruby"))
-     (rust . ("https://github.com/tree-sitter/tree-sitter-rust"))
-     (sql . ("https://github.com/m-novikov/tree-sitter-sql"))
-     (toml . ("https://github.com/tree-sitter/tree-sitter-toml"))
-     (zig . ("https://github.com/GrayJack/tree-sitter-zig")))))
-
-(add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" .
-				dockerfile-ts-mode))
+  :config
+  (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" . dockerfile-ts-mode)))
 
 (use-package markdown-mode
   :straight t
@@ -1723,14 +1713,6 @@ The exact color values are taken from the active Ef theme."
 (add-to-list 'major-mode-remap-alist
 	     '(conf-toml-mode . toml-ts-mode))
 
-(add-to-list 'auto-mode-alist
-	     '("\\.ya?ml$" . yaml-ts-mode))
-
-(use-package yaml-ts-mode
-  :custom
-  (tab-width 2)
-  )
-
 (use-package nix-mode
   :straight t
   :mode "\\.nix\\'")
@@ -1876,6 +1858,7 @@ Example usage: (get-api-key \"api/claude\") or (get-api-key \"api/openai\")"
 
 ;; Build by NixOS
 (use-package telega
+	:unless (eq system-type 'gnu/linux)
   :straight t
 	:config
 	(setq telega-emoji-font-family "Noto Color Emoji")
