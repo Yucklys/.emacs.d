@@ -5,3 +5,4 @@ eln-cache/
 .cache/
 .aider*
 .env
+.DS_Store
