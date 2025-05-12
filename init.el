@@ -1322,7 +1322,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
     (add-to-list 'default-frame-alist
 		 '(font . "Maple Mono SC NF-12"))
   (add-to-list 'default-frame-alist
-	       '(font . "Maple Mono NF CN-12")))
+	       '(font . "Maple Mono NF CN-14")))
 
 ;; (use-package cnfonts
 ;;   :straight t
@@ -1558,6 +1558,7 @@ The exact color values are taken from the active Ef theme."
    org-hide-emphasis-markers t
    org-pretty-entities t
    org-ellipsis "…"
+   org-modern-star 'replace
 
    ;; Agenda styling
    org-agenda-tags-column 0
@@ -1585,80 +1586,80 @@ The exact color values are taken from the active Ef theme."
   ("C-c n n n" . 'denote)
   ("C-c n n d" . 'denote-date)
   ("C-c n n s" . 'denote-subdirectory)
-	("C-c n n t" . 'denote-type)
-	("C-c n n x" . 'denote-org-extras-extract-org-subtree)
-	("C-c n n c" . 'org-capture)
-	("C-c n i" . 'denote-link-or-create)
-	("C-c n I" . 'denote-org-extras-link-to-heading)
+  ("C-c n n t" . 'denote-type)
+  ("C-c n n x" . 'denote-org-extras-extract-org-subtree)
+  ("C-c n n c" . 'org-capture)
+  ("C-c n i" . 'denote-link-or-create)
+  ("C-c n I" . 'denote-org-extras-link-to-heading)
   ("C-c n f" . 'denote-open-or-create-with-command)
-	("C-c n j" . 'denote-journal-extras-new-entry)
-	("C-c n b" . 'denote-find-backlink)
-	("C-c n c" . 'denote-region)
-	("C-c n B" . 'denote-backlinks)
+  ("C-c n j" . 'denote-journal-extras-new-entry)
+  ("C-c n b" . 'denote-find-backlink)
+  ("C-c n c" . 'denote-region)
+  ("C-c n B" . 'denote-backlinks)
   :config
   (setq denote-directory (file-name-concat org-directory "denote/"))
 
-	;; setup interactive prompt for note creation
-	(setq denote-prompts '(title keywords template))
+  ;; setup interactive prompt for note creation
+  (setq denote-prompts '(title keywords template))
 
-	;; use org's date selection interface for denote
-	(setq denote-date-prompt-use-org-read-date t)
+  ;; use org's date selection interface for denote
+  (setq denote-date-prompt-use-org-read-date t)
 
-	;; templates
-	(setq denote-templates
-				'((plain . "* ")
-					(memo . "* Memo\n")
-					(summary . "* Source\n\n* Summary\n")
-					(review . ,(concat "* Info"
-													 "\n\n"
-													 "* Review"
-													 "\n"))))
+  ;; templates
+  (setq denote-templates
+	'((plain . "* ")
+	  (memo . "* Memo\n")
+	  (summary . "* Source\n\n* Summary\n")
+	  (review . ,(concat "* Info"
+			     "\n\n"
+			     "* Review"
+			     "\n"))))
 
-	;; org-capture integration
-	(with-eval-after-load 'org-capture
-		(add-to-list 'org-capture-templates
-								 '("n" "New note (with Denote)" plain
-									 (file denote-last-path)
-									 #'denote-org-capture
-									 :no-save t
-									 :immediate-finish nil
-									 :kill-buffer t
-									 :jump-to-captured t)))
+  ;; org-capture integration
+  (with-eval-after-load 'org-capture
+    (add-to-list 'org-capture-templates
+		 '("n" "New note (with Denote)" plain
+		   (file denote-last-path)
+		   #'denote-org-capture
+		   :no-save t
+		   :immediate-finish nil
+		   :kill-buffer t
+		   :jump-to-captured t)))
 
-	;; call org-insert-structure-template
-	;; when in org-mode after ~denote-region~
-	(defun my-denote-region-org-structure-template (_beg _end)
-  (when (derived-mode-p 'org-mode)
-    (activate-mark)
-    (call-interactively 'org-insert-structure-template)))
+  ;; call org-insert-structure-template
+  ;; when in org-mode after ~denote-region~
+  (defun my-denote-region-org-structure-template (_beg _end)
+    (when (derived-mode-p 'org-mode)
+      (activate-mark)
+      (call-interactively 'org-insert-structure-template)))
 
-	(add-hook 'denote-region-after-new-note-functions
-						#'my-denote-region-org-structure-template)
+  (add-hook 'denote-region-after-new-note-functions
+	    #'my-denote-region-org-structure-template)
 
-	;; Exclude assets folders from operations
-	(setq denote-excluded-directories-regexp (rx (| "data" "ltximg")))
+  ;; Exclude assets folders from operations
+  (setq denote-excluded-directories-regexp (rx (| "data" "ltximg")))
 
-	;; show context in backlink buffer
-	(setq denote-backlinks-show-context t)
-	;; show the backlink buffer in the left side window
-	(setq denote-link-backlinks-display-buffer-action
-      '((display-buffer-reuse-window
-         display-buffer-in-side-window)
-        (side . left)
-        (slot . 99)
-        (window-width . 0.3)))
+  ;; show context in backlink buffer
+  (setq denote-backlinks-show-context t)
+  ;; show the backlink buffer in the left side window
+  (setq denote-link-backlinks-display-buffer-action
+	'((display-buffer-reuse-window
+           display-buffer-in-side-window)
+          (side . left)
+          (slot . 99)
+          (window-width . 0.3)))
 
-	;; dired integration
-	(setq denote-dired-directories
-				(list denote-directory
-							(expand-file-name "project" denote-directory)
-							(expand-file-name "journal" denote-directory)))
+  ;; dired integration
+  (setq denote-dired-directories
+	(list denote-directory
+	      (expand-file-name "project" denote-directory)
+	      (expand-file-name "journal" denote-directory)))
 
-	(add-hook 'dired-mode-hook #'denote-dired-mode-in-directories)
+  (add-hook 'dired-mode-hook #'denote-dired-mode-in-directories)
 
-	;; automatically rename denote buffers
-	(denote-rename-buffer-mode 1)
-	)
+  ;; automatically rename denote buffers
+  (denote-rename-buffer-mode 1)
+  )
 
 (use-package org-appear
   :straight (org-appear
@@ -1797,9 +1798,12 @@ The exact color values are taken from the active Ef theme."
   :config
   (elfeed-goodies/setup))
 
-(setq browse-url-browser-function 'browse-url-generic
-      browse-url-generic-program "qutebrowser"
-      browse-url-generic-args nil)
+;; Only customize the default browser for NixOS
+(when (eq system-type 'gnu/linux)
+  (setq browse-url-browser-function 'browse-url-generic
+	browse-url-generic-program "qutebrowser"
+	browse-url-generic-args nil)
+  )
 
 (use-package anki-editor
   :defer t
