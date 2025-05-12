@@ -174,26 +174,31 @@
   :custom
   (corfu-cycle t)
   (corfu-quit-no-match 'separator)
-  (corfu-preselect 'valid)
-  (corfu-auto nil)
-  (corfu-auto-delay 0.3)
-  (corfu-auto-prefix 3)
+  (corfu-preselect 'prompt)
+  ;; auto completion settings
+  (corfu-auto t)
+  (completion-cycle-threshold 3) ;; use tab to cycle when with a few candidate
+  (tab-always-indent 'complete) ;; always try to indent first
+  ;; Emacs 30: Disable Ispell completion
+  (text-mode-ispell-word-completion nil)
+  
+  :bind
+  (:map corfu-map
+	("S-SPC" . corfu-insert-separator)
+	("TAB" . corfu-next)
+        ([tab] . corfu-next)
+        ("S-TAB" . corfu-previous)
+        ([backtab] . corfu-previous))
 
   :hook
   (minibuffer-setup . corfu-enable-in-minibuffer)
   (eshell-mode . corfu-enable-in-shell)
   (meow-insert-exit . corfu-quit)
-  
-  :bind
-  (:map corfu-map
-        ("S-SPC" . corfu-insert-separator)
-        ("TAB" . corfu-next)
-        ([tab] . corfu-next)
-        ("S-TAB" . corfu-previous)
-        ([backtab] . corfu-previous))
-  
+
   :init
   (global-corfu-mode)
+  (corfu-history-mode)
+  (corfu-popupinfo-mode)
 
   :config
   ;; enable corfu in M-: or M-!
@@ -225,7 +230,7 @@
   ;; Corfu commands are hidden, since they are not supposed to be used via M-x.
   (setq read-extended-command-predicate
         #'command-completion-default-include-p)
-
+  
   ;; ignore casing
   (setq completion-ignore-case t)
   (setq read-buffer-completion-ignore-case t)
@@ -637,18 +642,28 @@
 	xref-history-storage 'xref-window-local-history))
 
 (use-package eglot
-	:hook (prog-mode . eglot-ensure)
-	:bind (:map eglot-mode-map
-							("C-c c r" . eglot-rename)
-							("C-c c a" . eglot-code-actions)
-							("C-c c d" . xref-find-definitions)
-							("C-c c f" . eglot-format))
-	:custom
-	(eglot-autoshutdown t)
-	:config
-	(add-to-list 'eglot-server-programs
-							 '(nix-mode . ("nixd")))
-	)
+  :hook (prog-mode . eglot-ensure)
+  :bind (:map eglot-mode-map
+	      ("C-c c r" . eglot-rename)
+	      ("C-c c a" . eglot-code-actions)
+	      ("C-c c d" . xref-find-definitions)
+	      ("C-c c f" . eglot-format))
+  :custom
+  (eglot-autoshutdown t)
+  :config
+  (add-to-list 'eglot-server-programs
+	       '(nix-mode . ("nixd")))
+  (setq completion-category-overrides '((eglot (styles orderless))
+                                      (eglot-capf (styles orderless))))
+  (defun my/eglot-capf ()
+    (setq-local completion-at-point-functions
+		(list (cape-capf-super
+                       #'eglot-completion-at-point
+                       #'tempel-expand
+                       #'cape-file))))
+
+  (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
+  )
 
 (use-package copilot
   :unless (eq system-type 'darwin)
@@ -1725,6 +1740,14 @@ The exact color values are taken from the active Ef theme."
 (use-package just-mode
   :straight t
   :mode ("\\justfile\\'" . just-mode))
+
+(use-package haskell-mode :straight t)
+
+(use-package lua-mode
+  :straight t
+  :mode
+  (("\\.lua\\'" . lua-mode))
+  )
 
 (use-package yuck-mode :straight t)
 
