@@ -158,16 +158,70 @@
 (use-package tramp
   :config
   (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
-  (add-to-list 'tramp-remote-path "~/.cargo/bin"))
+  (add-to-list 'tramp-remote-path "~/.cargo/bin")
+  ;; for cloud desktop
+  (setq tramp-use-ssh-controlmaster-options 'nil
+        tramp-default-remote-shell "/bin/bash"
+        max-specpdl-size 13000) ;; idk why - but getting a lot of "variable binding depth exceeds max-specpdl-size"
+  (connection-local-set-profile-variables 'remote-bash
+                                          '((shell-file-name . "/bin/bash")
+                                            (shell-command-switch . "-ic"))))
 
 (use-package exec-path-from-shell
   :straight t
   :config
-  (exec-path-from-shell-copy-env "PATH")
   (when (memq window-system '(mac ns x))
     (exec-path-from-shell-initialize))
   (when (daemonp)
-    (exec-path-from-shell-initialize)))
+    (exec-path-from-shell-initialize))
+  (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH")))
+
+(straight-use-package
+ '(EmacsAmazonLibs :type git
+                   :host nil
+                   :build t
+                   :post-build (copy-file "emacs-amazon-libs/brazil-path-cache-artifacts"
+                                          (straight--build-dir "EmacsAmazonLibs"))
+                   :repo "ssh://git.amazon.com:2222/pkg/EmacsAmazonLibs")
+ )
+
+(add-to-list 'load-path "~/.emacs.d/straight/repos/EmacsAmazonLibs/emacs-amazon-libs/")
+(use-package amz-common
+  :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                   :files ("emacs-amazon-libs/amz-common.el"
+                           "emacs-amazon-libs/texi/*.texi"))
+)
+;; integrate with brazil
+(use-package amz-brazil-config
+  :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                   :files ("emacs-amazon-libs/amz-brazil-config.el"))
+)
+(use-package amz-workspace
+  :after amz-common
+  :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                   :files ("emacs-amazon-libs/amz-workspace.el"
+                           "emacs-amazon-libs/amz-coral.el"
+                           "emacs-amazon-libs/amz-bmds.el"
+                           "emacs-amazon-libs/amz-brazil-cache.el"
+                           "emacs-amazon-libs/amz-brazil-config-parser.el"
+                           "emacs-amazon-libs/amz-shell.el"
+                           "emacs-amazon-libs/brazil-path-cache-artifacts"))
+  :custom (amz-workspace-default-root-directory "~/local/projects")
+)
+(use-package amz-package)
+;; amazon q developer
+(use-package amz-q-chat)
+
+(use-package amz-brief
+  :straight '(amz-brief :type git :host nil :repo "ssh://git.amazon.com:2222/pkg/Brief")
+  :defer t
+  :bind (:map amz-brief-mode-map
+           ("C-<tab>" . amz-brief))
+  :config
+  (setq amz-brief-default-host "zkli-clouddesk.aka.corp.amazon.com"
+        amz-brief-remote-workplace-dir "~/workplace"
+        amz-brief-preferred-development-style "HYBRID"
+        amz-brief-autosave-custom-commands t))
 
 (use-package corfu
   :straight t
@@ -643,6 +697,7 @@
 
 (use-package eglot
   :hook (prog-mode . eglot-ensure)
+  :defer t
   :bind (:map eglot-mode-map
 	      ("C-c c r" . eglot-rename)
 	      ("C-c c a" . eglot-code-actions)
@@ -663,7 +718,125 @@
                        #'cape-file))))
 
   (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
-  )
+
+  ;; Integration with bemol
+  ;; https://w.amazon.com/bin/view/Bemol#HEmacs
+  (defun husain-eglot-generate-workspace-folders (server)
+    "Generate the workspaceFolders value for the workspace.
+
+This is implemented by returning the content of .bemol/ws_root_folders file"
+    (let* ((root (project-root (project-current)))
+           (ws-root (file-name-parent-directory
+                     (file-name-parent-directory root)))
+           (bemol-root (file-name-concat ws-root ".bemol/"))
+           (bemol-ws-root-folders (file-name-concat bemol-root "ws_root_folders"))
+           (ws-root-folders-content)
+           (ws-folders-for-eglot))
+      (if (not (file-exists-p bemol-ws-root-folders))
+          (eglot-workspace-folders server))
+      (setq ws-root-folders-content (with-temp-buffer
+                                      (insert-file-contents bemol-ws-root-folders)
+                                      (split-string (buffer-string) "\n" t)))
+      (setq ws-folders-for-eglot (mapcar (lambda (o) (concat "file://" o))
+                                         ws-root-folders-content))
+      (vconcat ws-folders-for-eglot)))
+
+  (add-to-list 'eglot-server-programs
+               `(java-mode
+   . ("jdtls"
+                    ;; The following allows jdtls to find definition
+                    ;; if the code lives outside the current project.
+                    :initializationOptions
+                    ,(lambda (server)
+                       `(:workspaceFolders ,(husain-eglot-generate-workspace-folders server)
+                         :extendedClientCapabilities
+                         (:classFileContentsSupport t
+                                                    :classFileContentsSupport t
+                 :overrideMethodsPromptSupport t
+                 :hashCodeEqualsPromptSupport t
+                 :advancedOrganizeImportsSupport t
+                 :generateToStringPromptSupport t
+                 :advancedGenerateAccessorsSupport t
+                 :generateConstructorsPromptSupport t
+                 :generateDelegateMethodsPromptSupport t
+                 :advancedExtractRefactoringSupport t
+                                                    :moveRefactoringSupport t
+                 :clientHoverProvider t
+                 :clientDocumentSymbolProvider t
+                 :advancedIntroduceParameterRefactoringSupport t
+                 :actionableRuntimeNotificationSupport t
+                                                    :extractInterfaceSupport t
+                                                    :advancedUpgradeGradleSupport t))))))
+
+;; The jdt server sometimes returns jdt:// scheme for jumping to definition
+;; instead of returning a file. This is not part of LSP and eglot does not
+;; handle it. The following code enables eglot to handle jdt files.
+;; See https://github.com/yveszoundi/eglot-java/issues/6 for more info.
+  (defun jdt-file-name-handler (operation &rest args)
+    "Support Eclipse jdtls `jdt://' uri scheme."
+    (let* ((uri (car args))
+           (cache-dir "/tmp/.eglot")
+           (source-file
+            (directory-abbrev-apply
+             (expand-file-name
+              (file-name-concat
+               cache-dir
+               (save-match-data
+                 (when (string-match "jdt://contents/\\(.*?\\)/\\(.*\\)\.class\\?" uri))
+                 (message "URI:%s" uri)
+                 (format "%s.java" (replace-regexp-in-string "/" "." (match-string 2 uri) t t))))))))
+      (unless (file-readable-p source-file)
+        (let ((content (jsonrpc-request (eglot-current-server) :java/classFileContents (list :uri uri)))
+              (metadata-file (format "%s.%s.metadata"
+                                     (file-name-directory source-file)
+                                     (file-name-base source-file))))
+          (message "content:%s" content)
+          (unless (file-directory-p cache-dir) (make-directory cache-dir t))
+          (with-temp-file source-file (insert content))
+          (with-temp-file metadata-file (insert uri))))
+      source-file))
+
+  (add-to-list 'file-name-handler-alist '("\\`jdt://" . jdt-file-name-handler))
+
+  (defun jdthandler--wrap-legacy-eglot--path-to-uri (original-fn &rest args)
+  "Hack until eglot is updated.
+ARGS is a list with one element, a file path or potentially a URI.
+If path is a jar URI, don't parse. If it is not a jar call ORIGINAL-FN."
+  (let ((path (file-truename (car args))))
+    (if (equal "jdt" (url-type (url-generic-parse-url path)))
+        path
+      (apply original-fn args))))
+
+  (defun jdthandler--wrap-legacy-eglot--uri-to-path (original-fn &rest args)
+    "Hack until eglot is updated.
+ARGS is a list with one element, a URI.
+If URI is a jar URI, don't parse and let the `jdthandler--file-name-handler'
+handle it. If it is not a jar call ORIGINAL-FN."
+    (let ((uri (car args)))
+      (if (and (stringp uri)
+               (string= "jdt" (url-type (url-generic-parse-url uri))))
+          uri
+        (apply original-fn args))))
+
+  (defun jdthandler-patch-eglot ()
+    "Patch old versions of Eglot to work with Jdthandler."
+    (interactive) ;; TODO, remove when eglot is updated in melpa
+    (unless (and (advice-member-p #'jdthandler--wrap-legacy-eglot--path-to-uri 'eglot--path-to-uri)
+                 (advice-member-p #'jdthandler--wrap-legacy-eglot--uri-to-path 'eglot--uri-to-path))
+      (advice-add 'eglot--path-to-uri :around #'jdthandler--wrap-legacy-eglot--path-to-uri)
+      (advice-add 'eglot--uri-to-path :around #'jdthandler--wrap-legacy-eglot--uri-to-path)
+      (message "[jdthandler] Eglot successfully patched.")))
+
+  ;; invoke
+  (jdthandler-patch-eglot))
+
+(use-package eglot-java
+  :straight t
+  :requires eglot
+  :config
+  (add-to-list 'eglot-java-eclipse-jdt-args
+               (format "-javaagent:%s" (expand-file-name "var/lombok.jar"))
+               t))
 
 (use-package copilot
   :unless (eq system-type 'darwin)
@@ -1146,38 +1319,49 @@ targets."
 (add-hook 'minibuffer-exit-hook #'doom-restore-garbage-collection-h)
 
 (use-package doom-themes
-	:straight t
-	:config
-	;; Global settings (defaults)
-	(setq doom-themes-enable-bold t
-				doom-themes-enable-italic t)
+  :straight t
+  :config
+  ;; Global settings (defaults)
+  (setq doom-themes-enable-bold t
+	doom-themes-enable-italic t)
 
-	;; Corrects (and improves) org-mode's native fontification.
-	(doom-themes-org-config)
-	;; Enable doom theme on treemacs
-	(setq doom-themes-treemacs-theme "doom-atom")
-	(doom-themes-treemacs-config)
-	;; Enable flashing mode-line on errors
-	(doom-themes-visual-bell-config)
+  ;; Corrects (and improves) org-mode's native fontification.
+  (doom-themes-org-config)
+  ;; Enable doom theme on treemacs
+  (setq doom-themes-treemacs-theme "doom-atom")
+  (doom-themes-treemacs-config)
+  ;; Enable flashing mode-line on errors
+  (doom-themes-visual-bell-config)
 
-	;; Custom faces
-	(custom-set-faces
-	 '(variable-pitch ((t (:family "LXGW WenKai" :height 128))))
-	 '(org-block ((t (:inherit fixed-pitch)))))
-	)
+  ;; Custom faces
+  (custom-set-faces
+   '(variable-pitch ((t (:family "LXGW WenKai" :height 128))))
+   '(org-block ((t (:inherit fixed-pitch)))))
+  )
 
 (use-package ef-themes
-	:straight t
-	:config
-	(setq ef-themes-to-toggle '(ef-summer ef-winter))
-	(setq ef-themes-mixed-fonts t
-				ef-themes-variable-pitch-ui t))
+  :straight t
+  :config
+  (setq ef-themes-to-toggle '(ef-summer ef-winter))
+  (setq ef-themes-mixed-fonts t
+	ef-themes-variable-pitch-ui t)
+  ;; (setq ef-themes-headings ; read the manual's entry or the doc string
+  ;;     '((0 variable-pitch light 1.9)
+  ;;       (1 variable-pitch light 1.8)
+  ;;       (2 variable-pitch regular 1.7)
+  ;;       (3 variable-pitch regular 1.6)
+  ;;       (4 variable-pitch regular 1.5)
+  ;;       (5 variable-pitch 1.4) ; absence of weight means `bold'
+  ;;       (6 variable-pitch 1.3)
+  ;;       (7 variable-pitch 1.2)
+  ;;       (t variable-pitch 1.1)))
+  )
 
 (defun yu/load-theme () (load-theme 'ef-winter t))
 
 (if (daemonp)
-		(add-hook 'server-after-make-frame-hook #'yu/load-theme)
-	(yu/load-theme))
+    (add-hook 'server-after-make-frame-hook #'yu/load-theme)
+  (yu/load-theme))
 
 (use-package doom-modeline
   :straight t
@@ -1337,7 +1521,7 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
     (add-to-list 'default-frame-alist
 		 '(font . "Maple Mono SC NF-12"))
   (add-to-list 'default-frame-alist
-	       '(font . "Maple Mono NF CN-14")))
+	       '(font . "Maple Mono NF CN-16")))
 
 ;; (use-package cnfonts
 ;;   :straight t
@@ -1391,12 +1575,6 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   ;; Enables ligature checks globally in all buffers. You can also do it
   ;; per mode with `ligature-mode'.
   (global-ligature-mode t))
-
-;; Use serif font in text mode
-(use-package variable-pitch-mode
-	:hook
-	((org-mode markdown-mode) . variable-pitch-mode)
-	)
 
 (use-package emojify
   :straight t
@@ -1483,6 +1661,31 @@ The exact color values are taken from the active Ef theme."
 
 (use-package treesit
   :config
+  (setq treesit-language-source-alist
+	'(
+          ;; Available from the main tree-sitter organization.
+          (bash       "https://github.com/tree-sitter/tree-sitter-bash")
+          (css        "https://github.com/tree-sitter/tree-sitter-css")
+          (go         "https://github.com/tree-sitter/tree-sitter-go")
+          (haskell    "https://github.com/tree-sitter/haskell-tree-sitter")
+          (html       "https://github.com/tree-sitter/tree-sitter-html")
+          (html       "https://github.com/tree-sitter/tree-sitter-html")
+          (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src")
+          (json       "https://github.com/tree-sitter/tree-sitter-json")
+          (python     "https://github.com/tree-sitter/tree-sitter-python")
+          (toml       "https://github.com/tree-sitter/tree-sitter-toml")
+          (tsx        "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
+          (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+
+          ;; Available from outside of the main tree-sitter organization.
+          (clojure    "https://github.com/sogaiu/tree-sitter-clojure")
+          (cmake      "https://github.com/uyha/tree-sitter-cmake")
+          (elisp      "https://github.com/Wilfred/tree-sitter-elisp")
+          (java       "https://github.com/serenadeai/java-tree-sitterl")
+          (make       "https://github.com/alemuller/tree-sitter-make")
+          (markdown   "https://github.com/ikatyang/tree-sitter-markdown")
+          (yaml       "https://github.com/ikatyang/tree-sitter-yaml")
+          ))
   (add-to-list 'auto-mode-alist '("\\(?:Dockerfile\\(?:\\..*\\)?\\|\\.[Dd]ockerfile\\)\\'" . dockerfile-ts-mode)))
 
 (use-package markdown-mode
