@@ -1342,7 +1342,7 @@ targets."
 (use-package ef-themes
   :straight t
   :config
-  (setq ef-themes-to-toggle '(ef-summer ef-winter))
+  (setq ef-themes-to-toggle '(ef-winter ef-frost))
   (setq ef-themes-mixed-fonts t
 	ef-themes-variable-pitch-ui t)
   ;; (setq ef-themes-headings ; read the manual's entry or the doc string
@@ -1363,9 +1363,21 @@ targets."
     (add-hook 'server-after-make-frame-hook #'yu/load-theme)
   (yu/load-theme))
 
+(use-package auto-dark
+  :straight t
+  :custom
+  (auto-dark-mode '((ef-winter) (ef-frost)))
+  (auto-dark-polling-interval-seconds 5)
+  :hook
+  (auto-dark-dark-mode . (lambda ()
+			   (load-theme 'ef-winter)))
+  (auto-dark-light-mode . (lambda ()
+			    (load-theme 'ef-frost)))
+  :init (auto-dark-mode))
+
 (use-package doom-modeline
   :straight t
-	:defer t
+  :defer t
   :init (doom-modeline-mode 1)
   :custom
   (doom-modeline-support-imenu t)
@@ -1618,46 +1630,46 @@ Exempt major modes are defined in `display-line-numbers-exempt-modes'."
   :bind
   ("C-c b b" . 'bufler-switch-buffer)
   ("C-c b l" . 'bufler)
-	("C-c b s" . 'bufler-workspace-focus-buffer)
-	("C-c b S" . 'bufler-workspace-frame-set)
+  ("C-c b s" . 'bufler-workspace-focus-buffer)
+  ("C-c b S" . 'bufler-workspace-frame-set)
   :config
   (require 'bufler-workspace-tabs)
   )
 
 (use-package hl-todo
-	:straight t
-	:config
-	(global-hl-todo-mode)
-	(defun my-ef-themes-hl-todo-faces ()
-		"Configure `hl-todo-keyword-faces' with Ef themes colors.
+  :straight t
+  :config
+  (global-hl-todo-mode)
+  (defun my-ef-themes-hl-todo-faces ()
+    "Configure `hl-todo-keyword-faces' with Ef themes colors.
 The exact color values are taken from the active Ef theme."
-		(ef-themes-with-colors
-			(setq hl-todo-keyword-faces
-						`(("HOLD" . ,yellow)
-							("TODO" . ,red)
-							("NEXT" . ,blue)
-							("THEM" . ,magenta)
-							("PROG" . ,cyan-warmer)
-							("OKAY" . ,green-warmer)
-							("DONT" . ,yellow-warmer)
-							("FAIL" . ,red-warmer)
-							("BUG" . ,red-warmer)
-							("DONE" . ,green)
-							("NOTE" . ,blue-warmer)
-							("KLUDGE" . ,cyan)
-							("HACK" . ,cyan)
-							("TEMP" . ,red)
-							("FIXME" . ,red-warmer)
-							("REVIEW" . ,red)
-							("DEPRECATED" . ,yellow)))))
+    (ef-themes-with-colors
+      (setq hl-todo-keyword-faces
+	    `(("HOLD" . ,yellow)
+	      ("TODO" . ,red)
+	      ("NEXT" . ,blue)
+	      ("THEM" . ,magenta)
+	      ("PROG" . ,cyan-warmer)
+	      ("OKAY" . ,green-warmer)
+	      ("DONT" . ,yellow-warmer)
+	      ("FAIL" . ,red-warmer)
+	      ("BUG" . ,red-warmer)
+	      ("DONE" . ,green)
+	      ("NOTE" . ,blue-warmer)
+	      ("KLUDGE" . ,cyan)
+	      ("HACK" . ,cyan)
+	      ("TEMP" . ,red)
+	      ("FIXME" . ,red-warmer)
+	      ("REVIEW" . ,red)
+	      ("DEPRECATED" . ,yellow)))))
 
-	(add-hook 'ef-themes-post-load-hook #'my-ef-themes-hl-todo-faces)
-	)
+  (add-hook 'ef-themes-post-load-hook #'my-ef-themes-hl-todo-faces)
+  )
 
 (use-package magit-todos
-	:after magit
-	:straight t
-	:config (magit-todos-mode 1))
+  :after magit
+  :straight t
+  :config (magit-todos-mode 1))
 
 (use-package treesit
   :config
