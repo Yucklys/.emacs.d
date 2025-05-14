@@ -235,28 +235,6 @@ Use straight and use-package-compute-statistics to manage packages. These two pa
   					(magit-mode-quit-window t)))
     )
 #+end_src
-** Tramp
-#+begin_src emacs-lisp
-  ;; Set PATH for remote machine respect to user's PATH
-  (connection-local-set-profile-variables 'remote-path-with-bin
-  					'((tramp-remote-path . (tramp-default-remote-path
-  								tramp-own-remote-path))))
-
-  (connection-local-set-profiles
-     '(:application tramp :user "vagrant") 'remote-path-with-bin)
-
-  (use-package tramp
-    :config
-    (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
-    (add-to-list 'tramp-remote-path "~/.cargo/bin")
-    ;; for cloud desktop
-    (setq tramp-use-ssh-controlmaster-options 'nil
-          tramp-default-remote-shell "/bin/bash"
-          max-specpdl-size 13000) ;; idk why - but getting a lot of "variable binding depth exceeds max-specpdl-size"
-    (connection-local-set-profile-variables 'remote-bash
-                                            '((shell-file-name . "/bin/bash")
-                                              (shell-command-switch . "-ic"))))
-#+end_src
 ** Environment
 For mac, use =exec-path-from-shell= to get environment variables from shell environment.
 #+begin_src emacs-lisp
@@ -267,7 +245,7 @@ For mac, use =exec-path-from-shell= to get environment variables from shell envi
       (exec-path-from-shell-initialize))
     (when (daemonp)
       (exec-path-from-shell-initialize))
-    (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH")))
+    (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH" "PATH")))
 #+end_src
 ** Amazon
 Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check internal [[https://w.amazon.com/bin/view/Emacs/][Emacs Wiki]].
@@ -304,9 +282,11 @@ Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check i
                              "emacs-amazon-libs/brazil-path-cache-artifacts"))
     :custom (amz-workspace-default-root-directory "~/local/projects")
   )
-  (use-package amz-package)
+  (use-package amz-package
+    :after amz-workspace)
   ;; amazon q developer
-  (use-package amz-q-chat)
+  (use-package amz-q-chat
+    :defer t)
 #+end_src
 
 Use =brief=, which is an Emacs minor-mode that provides a transient interface for Brazil CLI.
@@ -999,6 +979,7 @@ For enhanced Java support in eglot, use =eglot-java=. Install =lombok.jar= to su
   (use-package eglot-java
     :straight t
     :requires eglot
+    :after eglot
     :config
     (add-to-list 'eglot-java-eclipse-jdt-args
                  (format "-javaagent:%s" (expand-file-name "var/lombok.jar"))
@@ -1451,11 +1432,11 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
              (seq "~" eol)                 ;; backup-files
              (seq bol "CVS" eol)           ;; CVS dirs
              )))
-  	;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
-  	(if (not (version< emacs-version "29"))
-  			(setq dired-mouse-drag-files t
-  						mouse-drag-and-drop-region-cross-program t))
-  	)
+    ;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
+    (if (not (version< emacs-version "29"))
+        (setq dired-mouse-drag-files t
+  	    mouse-drag-and-drop-region-cross-program t))
+    )
 #+end_src
 ** Treemacs
 #+begin_src emacs-lisp
@@ -1567,26 +1548,11 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
     ;;       (t variable-pitch 1.1)))
     )
 
-  (defun yu/load-theme () (load-theme 'ef-winter t))
+  (defun yu/load-theme () (load-theme 'ef-frost t))
 
   (if (daemonp)
       (add-hook 'server-after-make-frame-hook #'yu/load-theme)
     (yu/load-theme))
-#+end_src
-
-Use =auto-dark-mode= to switch between light/dark mode according to the system variant.
-#+begin_src emacs-lisp
-  (use-package auto-dark
-    :straight t
-    :custom
-    (auto-dark-mode '((ef-winter) (ef-frost)))
-    (auto-dark-polling-interval-seconds 5)
-    :hook
-    (auto-dark-dark-mode . (lambda ()
-  			   (load-theme 'ef-winter)))
-    (auto-dark-light-mode . (lambda ()
-  			    (load-theme 'ef-frost)))
-    :init (auto-dark-mode))
 #+end_src
 ** Mode line
 #+begin_src emacs-lisp

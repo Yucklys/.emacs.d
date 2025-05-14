@@ -147,26 +147,6 @@
 					(magit-mode-quit-window t)))
   )
 
-;; Set PATH for remote machine respect to user's PATH
-(connection-local-set-profile-variables 'remote-path-with-bin
-					'((tramp-remote-path . (tramp-default-remote-path
-								tramp-own-remote-path))))
-
-(connection-local-set-profiles
-   '(:application tramp :user "vagrant") 'remote-path-with-bin)
-
-(use-package tramp
-  :config
-  (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
-  (add-to-list 'tramp-remote-path "~/.cargo/bin")
-  ;; for cloud desktop
-  (setq tramp-use-ssh-controlmaster-options 'nil
-        tramp-default-remote-shell "/bin/bash"
-        max-specpdl-size 13000) ;; idk why - but getting a lot of "variable binding depth exceeds max-specpdl-size"
-  (connection-local-set-profile-variables 'remote-bash
-                                          '((shell-file-name . "/bin/bash")
-                                            (shell-command-switch . "-ic"))))
-
 (use-package exec-path-from-shell
   :straight t
   :config
@@ -174,7 +154,7 @@
     (exec-path-from-shell-initialize))
   (when (daemonp)
     (exec-path-from-shell-initialize))
-  (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH")))
+  (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH" "PATH")))
 
 (straight-use-package
  '(EmacsAmazonLibs :type git
@@ -208,9 +188,11 @@
                            "emacs-amazon-libs/brazil-path-cache-artifacts"))
   :custom (amz-workspace-default-root-directory "~/local/projects")
 )
-(use-package amz-package)
+(use-package amz-package
+  :after amz-workspace)
 ;; amazon q developer
-(use-package amz-q-chat)
+(use-package amz-q-chat
+  :defer t)
 
 (use-package amz-brief
   :straight '(amz-brief :type git :host nil :repo "ssh://git.amazon.com:2222/pkg/Brief")
@@ -833,6 +815,7 @@ handle it. If it is not a jar call ORIGINAL-FN."
 (use-package eglot-java
   :straight t
   :requires eglot
+  :after eglot
   :config
   (add-to-list 'eglot-java-eclipse-jdt-args
                (format "-javaagent:%s" (expand-file-name "var/lombok.jar"))
@@ -1250,11 +1233,11 @@ targets."
            (seq "~" eol)                 ;; backup-files
            (seq bol "CVS" eol)           ;; CVS dirs
            )))
-	;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
-	(if (not (version< emacs-version "29"))
-			(setq dired-mouse-drag-files t
-						mouse-drag-and-drop-region-cross-program t))
-	)
+  ;; Enable mouse drag-and-drop. Available for Emacs 29 and later.
+  (if (not (version< emacs-version "29"))
+      (setq dired-mouse-drag-files t
+	    mouse-drag-and-drop-region-cross-program t))
+  )
 
 (use-package treemacs
   :straight (treemacs
@@ -1357,23 +1340,11 @@ targets."
   ;;       (t variable-pitch 1.1)))
   )
 
-(defun yu/load-theme () (load-theme 'ef-winter t))
+(defun yu/load-theme () (load-theme 'ef-frost t))
 
 (if (daemonp)
     (add-hook 'server-after-make-frame-hook #'yu/load-theme)
   (yu/load-theme))
-
-(use-package auto-dark
-  :straight t
-  :custom
-  (auto-dark-mode '((ef-winter) (ef-frost)))
-  (auto-dark-polling-interval-seconds 5)
-  :hook
-  (auto-dark-dark-mode . (lambda ()
-			   (load-theme 'ef-winter)))
-  (auto-dark-light-mode . (lambda ()
-			    (load-theme 'ef-frost)))
-  :init (auto-dark-mode))
 
 (use-package doom-modeline
   :straight t
