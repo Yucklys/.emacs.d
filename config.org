@@ -240,12 +240,12 @@ For mac, use =exec-path-from-shell= to get environment variables from shell envi
 #+begin_src emacs-lisp
   (use-package exec-path-from-shell
     :straight t
+    :if window-system ;
+    :custom
+    (exec-path-from-shell-debug t)
+    (exec-path-from-shell-shell-name "/bin/zsh")
     :config
-    (when (memq window-system '(mac ns x))
-      (exec-path-from-shell-initialize))
-    (when (daemonp)
-      (exec-path-from-shell-initialize))
-    (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH" "PATH")))
+    (exec-path-from-shell-initialize))
 #+end_src
 ** Amazon
 Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check internal [[https://w.amazon.com/bin/view/Emacs/][Emacs Wiki]].
@@ -301,6 +301,7 @@ Use =brief=, which is an Emacs minor-mode that provides a transient interface fo
           amz-brief-remote-workplace-dir "~/workplace"
           amz-brief-preferred-development-style "HYBRID"
           amz-brief-autosave-custom-commands t))
+#+end_src
 #+end_src
 * Completion
 ** Corfu
@@ -839,7 +840,9 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
 ** LSP
 #+begin_src emacs-lisp
   (use-package eglot
-    :hook (prog-mode . eglot-ensure)
+    :hook ((java-mode . eglot-ensure)
+  	 (python-mode . eglot-ensure)
+  	 (rust-mode . eglot-ensure))
     :defer t
     :bind (:map eglot-mode-map
   	      ("C-c c r" . eglot-rename)
@@ -971,7 +974,7 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
         (message "[jdthandler] Eglot successfully patched.")))
 
     ;; invoke
-    (jdthandler-patch-eglot))
+    (add-hook 'java-mode-hook #'jdthandler-patch-eglot))
 #+end_src
 
 For enhanced Java support in eglot, use =eglot-java=. Install =lombok.jar= to support project that uses lombok.

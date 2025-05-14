@@ -149,12 +149,12 @@
 
 (use-package exec-path-from-shell
   :straight t
+  :if window-system ;
+  :custom
+  (exec-path-from-shell-debug t)
+  (exec-path-from-shell-shell-name "/bin/zsh")
   :config
-  (when (memq window-system '(mac ns x))
-    (exec-path-from-shell-initialize))
-  (when (daemonp)
-    (exec-path-from-shell-initialize))
-  (exec-path-from-shell-copy-envs '("LDBRARY_PATH" "INFOPATH" "CPATH" "MANPATH" "PATH")))
+  (exec-path-from-shell-initialize))
 
 (straight-use-package
  '(EmacsAmazonLibs :type git
@@ -678,7 +678,9 @@
 	xref-history-storage 'xref-window-local-history))
 
 (use-package eglot
-  :hook (prog-mode . eglot-ensure)
+  :hook ((java-mode . eglot-ensure)
+	 (python-mode . eglot-ensure)
+	 (rust-mode . eglot-ensure))
   :defer t
   :bind (:map eglot-mode-map
 	      ("C-c c r" . eglot-rename)
@@ -810,7 +812,7 @@ handle it. If it is not a jar call ORIGINAL-FN."
       (message "[jdthandler] Eglot successfully patched.")))
 
   ;; invoke
-  (jdthandler-patch-eglot))
+  (add-hook 'java-mode-hook #'jdthandler-patch-eglot))
 
 (use-package eglot-java
   :straight t
