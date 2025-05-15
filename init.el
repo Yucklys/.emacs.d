@@ -156,43 +156,45 @@
   :config
   (exec-path-from-shell-initialize))
 
-(straight-use-package
- '(EmacsAmazonLibs :type git
-                   :host nil
-                   :build t
-                   :post-build (copy-file "emacs-amazon-libs/brazil-path-cache-artifacts"
-                                          (straight--build-dir "EmacsAmazonLibs"))
-                   :repo "ssh://git.amazon.com:2222/pkg/EmacsAmazonLibs")
- )
+(when (equal (system-name) "7cf34dda6815")
+   (straight-use-package
+    '(EmacsAmazonLibs :type git
+                      :host nil
+                      :build t
+                      :post-build (copy-file "emacs-amazon-libs/brazil-path-cache-artifacts"
+                                             (straight--build-dir "EmacsAmazonLibs"))
+                      :repo "ssh://git.amazon.com:2222/pkg/EmacsAmazonLibs")
+    )
 
-(add-to-list 'load-path "~/.emacs.d/straight/repos/EmacsAmazonLibs/emacs-amazon-libs/")
-(use-package amz-common
-  :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                   :files ("emacs-amazon-libs/amz-common.el"
-                           "emacs-amazon-libs/texi/*.texi"))
-)
-;; integrate with brazil
-(use-package amz-brazil-config
-  :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                   :files ("emacs-amazon-libs/amz-brazil-config.el"))
-)
-(use-package amz-workspace
-  :after amz-common
-  :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                   :files ("emacs-amazon-libs/amz-workspace.el"
-                           "emacs-amazon-libs/amz-coral.el"
-                           "emacs-amazon-libs/amz-bmds.el"
-                           "emacs-amazon-libs/amz-brazil-cache.el"
-                           "emacs-amazon-libs/amz-brazil-config-parser.el"
-                           "emacs-amazon-libs/amz-shell.el"
-                           "emacs-amazon-libs/brazil-path-cache-artifacts"))
-  :custom (amz-workspace-default-root-directory "~/local/projects")
-)
-(use-package amz-package
-  :after amz-workspace)
-;; amazon q developer
-(use-package amz-q-chat
-  :defer t)
+   (add-to-list 'load-path "~/.emacs.d/straight/repos/EmacsAmazonLibs/emacs-amazon-libs/")
+   (use-package amz-common
+     :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                      :files ("emacs-amazon-libs/amz-common.el"
+                              "emacs-amazon-libs/texi/*.texi"))
+     )
+   ;; integrate with brazil
+   (use-package amz-brazil-config
+     :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                      :files ("emacs-amazon-libs/amz-brazil-config.el"))
+     )
+   (use-package amz-workspace
+     :after amz-common
+     :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                      :files ("emacs-amazon-libs/amz-workspace.el"
+                              "emacs-amazon-libs/amz-coral.el"
+                              "emacs-amazon-libs/amz-bmds.el"
+                              "emacs-amazon-libs/amz-brazil-cache.el"
+                              "emacs-amazon-libs/amz-brazil-config-parser.el"
+                              "emacs-amazon-libs/amz-shell.el"
+                              "emacs-amazon-libs/brazil-path-cache-artifacts"))
+     :custom (amz-workspace-default-root-directory "~/local/projects")
+     )
+   (use-package amz-package
+     :after amz-workspace)
+   ;; amazon q developer
+   (use-package amz-q-chat
+     :defer t)
+   )
 
 (use-package amz-brief
   :straight '(amz-brief :type git :host nil :repo "ssh://git.amazon.com:2222/pkg/Brief")
