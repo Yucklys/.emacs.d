@@ -672,6 +672,14 @@
                                   emacs-lisp-checkdoc))))
   :init (global-flycheck-mode))
 
+(use-package jinx
+  :straight t
+  :hook ((text-mode . jinx-mode)
+	 (prog-mode . jinx-mode)
+	 (conf-mode . jinx-mode))
+  :bind (("M-$" . jinx-correct)
+	 ("C-M-$" . jinx-languages)))
+
 (use-package xref
   :config
   (setq xref-search-program 'ripgrep
@@ -1684,7 +1692,8 @@ The exact color values are taken from the active Ef theme."
   (add-to-list 'eglot-server-programs '(web-mode "vls")))
 
 (use-package treesit
-  :mode ("\\.tsx\\'" . tsx-ts-mode))
+  :mode (("\\.tsx\\'" . tsx-ts-mode)
+	 ("\\.json\\'" . json-ts-mode)))
 
 (use-package org
   :straight t

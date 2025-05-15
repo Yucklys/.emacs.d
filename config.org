@@ -830,6 +830,16 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
                                     emacs-lisp-checkdoc))))
     :init (global-flycheck-mode))
 #+end_src
+*** Spelling
+#+begin_src emacs-lisp
+  (use-package jinx
+    :straight t
+    :hook ((text-mode . jinx-mode)
+  	 (prog-mode . jinx-mode)
+  	 (conf-mode . jinx-mode))
+    :bind (("M-$" . jinx-correct)
+  	 ("C-M-$" . jinx-languages)))
+#+end_src
 ** xref
 #+begin_src emacs-lisp
   (use-package xref
@@ -1928,7 +1938,8 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 ** React
 #+begin_src emacs-lisp
   (use-package treesit
-    :mode ("\\.tsx\\'" . tsx-ts-mode))
+    :mode (("\\.tsx\\'" . tsx-ts-mode)
+  	 ("\\.json\\'" . json-ts-mode)))
 #+end_src
 ** Org
 *** Org mode
