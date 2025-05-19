@@ -149,7 +149,6 @@
 
 (use-package exec-path-from-shell
   :straight t
-  :if window-system ;
   :custom
   (exec-path-from-shell-debug t)
   (exec-path-from-shell-shell-name "/bin/zsh")
@@ -191,9 +190,17 @@
      )
    (use-package amz-package
      :after amz-workspace)
+   (use-package amz-brazil-cache)
    ;; amazon q developer
    (use-package amz-q-chat
      :defer t)
+
+   ;; embark integration
+   (use-package amz-embark
+     :after embark)
+
+   ;; amz-coral
+   (use-package amz-coral)
    )
 
 (use-package amz-brief
@@ -713,8 +720,6 @@
 
   (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
 
-  ;; Integration with bemol
-  ;; https://w.amazon.com/bin/view/Bemol#HEmacs
   (defun husain-eglot-generate-workspace-folders (server)
     "Generate the workspaceFolders value for the workspace.
 
@@ -822,15 +827,23 @@ handle it. If it is not a jar call ORIGINAL-FN."
       (message "[jdthandler] Eglot successfully patched.")))
 
   ;; invoke
-  (add-hook 'java-mode-hook #'jdthandler-patch-eglot))
+  (jdthandler-patch-eglot)
+)
 
-(use-package eglot-java
-  :straight t
-  :requires eglot
+(use-package eglot-java-lombok
+  :straight (eglot-java-lombok :type git :host github :repo "ltylty/eglot-java-lombok")
   :after eglot
   :config
+  (eglot-java-lombok/init))
+
+(use-package eglot-java
+  :disabled t
+  :straight t
+  ;; :custom
+  ;; (eglot-java-eglot-server-programs-manual-updates t)
+  :config
   (add-to-list 'eglot-java-eclipse-jdt-args
-               (format "-javaagent:%s" (expand-file-name "var/lombok.jar"))
+               (format "-javaagent:%s" (expand-file-name "~/.emacs.d/var/lombok.jar"))
                t))
 
 (use-package copilot
