@@ -193,7 +193,15 @@
    (use-package amz-brazil-cache)
    ;; amazon q developer
    (use-package amz-q-chat
-     :defer t)
+     :bind (("C-c q t" . 'amz-q-chat-toggle)
+	    ("C-c q q" . 'amz-q-chat-stop)
+	    ("C-c q r" . 'amz-q-chat-restart)))
+   (use-package amz-q-ide
+     :custom
+     (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
+     :init
+     (amz-q-ide-setup)
+     )
 
    ;; embark integration
    (use-package amz-embark
