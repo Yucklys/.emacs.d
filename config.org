@@ -291,9 +291,10 @@ Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check i
   	    ("C-c q q" . 'amz-q-chat-stop)
   	    ("C-c q r" . 'amz-q-chat-restart)))
      (use-package amz-q-ide
+       :after lsp-mode
        :custom
        (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
-       :init
+       :config
        (amz-q-ide-setup)
        )
 
@@ -865,7 +866,8 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
   	xref-history-storage 'xref-window-local-history))
 #+end_src
 ** LSP
-#+begin_src emacs-lisp
+*** eglot
+#+begin_src emacs-lisp :tangle no
   (use-package eglot
     :hook ((java-mode . eglot-ensure)
   	 (python-mode . eglot-ensure)
@@ -988,7 +990,7 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
                  (string= "jdt" (url-type (url-generic-parse-url uri))))
             uri
           (apply original-fn args))))
-
+    
     (defun jdthandler-patch-eglot ()
       "Patch old versions of Eglot to work with Jdthandler."
       (interactive) ;; TODO, remove when eglot is updated in melpa
@@ -1008,18 +1010,29 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
     :config
     (eglot-java-lombok/init))
 #+end_src
-
-For enhanced Java support in eglot, use =eglot-java=. Install =lombok.jar= to support project that uses lombok.
+*** lsp-mode
 #+begin_src emacs-lisp
-  (use-package eglot-java
-    :disabled t
+  (use-package lsp-mode
     :straight t
-    ;; :custom
-    ;; (eglot-java-eglot-server-programs-manual-updates t)
+    :hook (((java-mode java-ts-mode) . lsp-deferred)
+  	 (python-mode . lsp-deferred)
+  	 (rust-mode . lsp-deferred))
+    :bind-keymap ("C-c l" . lsp-mode-map)
+    :commands (lsp lsp-deferred))
+
+  (use-package lsp-ui
+    :straight t
+    :commands lsp-ui-mode)
+
+  ;; Configure for packages that use Lombok
+  (use-package lsp-java
+    :straight t
     :config
-    (add-to-list 'eglot-java-eclipse-jdt-args
-                 (format "-javaagent:%s" (expand-file-name "~/.emacs.d/var/lombok.jar"))
+    (add-to-list 'lsp-java-vmargs
+                 (format "-javaagent:%s" (expand-file-name "~/.emacs.d/lombok.jar"))
                  t))
+
+
 #+end_src
 ** Copilot
 Use ~copilot~ to provide code completion. It is a language server that provides completion and other features for many languages.
@@ -1547,6 +1560,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
 #+begin_src emacs-lisp
   (use-package doom-themes
     :straight t
+    :defer t
     :config
     ;; Global settings (defaults)
     (setq doom-themes-enable-bold t

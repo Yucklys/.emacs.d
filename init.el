@@ -197,9 +197,10 @@
 	    ("C-c q q" . 'amz-q-chat-stop)
 	    ("C-c q r" . 'amz-q-chat-restart)))
    (use-package amz-q-ide
+     :after lsp-mode
      :custom
      (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
-     :init
+     :config
      (amz-q-ide-setup)
      )
 
@@ -702,156 +703,24 @@
   (setq xref-search-program 'ripgrep
 	xref-history-storage 'xref-window-local-history))
 
-(use-package eglot
-  :hook ((java-mode . eglot-ensure)
-	 (python-mode . eglot-ensure)
-	 (rust-mode . eglot-ensure))
-  :defer t
-  :bind (:map eglot-mode-map
-	      ("C-c c r" . eglot-rename)
-	      ("C-c c a" . eglot-code-actions)
-	      ("C-c c d" . xref-find-definitions)
-	      ("C-c c f" . eglot-format))
-  :custom
-  (eglot-autoshutdown t)
-  :config
-  (add-to-list 'eglot-server-programs
-	       '(nix-mode . ("nixd")))
-  (setq completion-category-overrides '((eglot (styles orderless))
-                                      (eglot-capf (styles orderless))))
-  (defun my/eglot-capf ()
-    (setq-local completion-at-point-functions
-		(list (cape-capf-super
-                       #'eglot-completion-at-point
-                       #'tempel-expand
-                       #'cape-file))))
-
-  (add-hook 'eglot-managed-mode-hook #'my/eglot-capf)
-
-  (defun husain-eglot-generate-workspace-folders (server)
-    "Generate the workspaceFolders value for the workspace.
-
-This is implemented by returning the content of .bemol/ws_root_folders file"
-    (let* ((root (project-root (project-current)))
-           (ws-root (file-name-parent-directory
-                     (file-name-parent-directory root)))
-           (bemol-root (file-name-concat ws-root ".bemol/"))
-           (bemol-ws-root-folders (file-name-concat bemol-root "ws_root_folders"))
-           (ws-root-folders-content)
-           (ws-folders-for-eglot))
-      (if (not (file-exists-p bemol-ws-root-folders))
-          (eglot-workspace-folders server))
-      (setq ws-root-folders-content (with-temp-buffer
-                                      (insert-file-contents bemol-ws-root-folders)
-                                      (split-string (buffer-string) "\n" t)))
-      (setq ws-folders-for-eglot (mapcar (lambda (o) (concat "file://" o))
-                                         ws-root-folders-content))
-      (vconcat ws-folders-for-eglot)))
-
-  (add-to-list 'eglot-server-programs
-               `(java-mode
-   . ("jdtls"
-                    ;; The following allows jdtls to find definition
-                    ;; if the code lives outside the current project.
-                    :initializationOptions
-                    ,(lambda (server)
-                       `(:workspaceFolders ,(husain-eglot-generate-workspace-folders server)
-                         :extendedClientCapabilities
-                         (:classFileContentsSupport t
-                                                    :classFileContentsSupport t
-                 :overrideMethodsPromptSupport t
-                 :hashCodeEqualsPromptSupport t
-                 :advancedOrganizeImportsSupport t
-                 :generateToStringPromptSupport t
-                 :advancedGenerateAccessorsSupport t
-                 :generateConstructorsPromptSupport t
-                 :generateDelegateMethodsPromptSupport t
-                 :advancedExtractRefactoringSupport t
-                                                    :moveRefactoringSupport t
-                 :clientHoverProvider t
-                 :clientDocumentSymbolProvider t
-                 :advancedIntroduceParameterRefactoringSupport t
-                 :actionableRuntimeNotificationSupport t
-                                                    :extractInterfaceSupport t
-                                                    :advancedUpgradeGradleSupport t))))))
-
-;; The jdt server sometimes returns jdt:// scheme for jumping to definition
-;; instead of returning a file. This is not part of LSP and eglot does not
-;; handle it. The following code enables eglot to handle jdt files.
-;; See https://github.com/yveszoundi/eglot-java/issues/6 for more info.
-  (defun jdt-file-name-handler (operation &rest args)
-    "Support Eclipse jdtls `jdt://' uri scheme."
-    (let* ((uri (car args))
-           (cache-dir "/tmp/.eglot")
-           (source-file
-            (directory-abbrev-apply
-             (expand-file-name
-              (file-name-concat
-               cache-dir
-               (save-match-data
-                 (when (string-match "jdt://contents/\\(.*?\\)/\\(.*\\)\.class\\?" uri))
-                 (message "URI:%s" uri)
-                 (format "%s.java" (replace-regexp-in-string "/" "." (match-string 2 uri) t t))))))))
-      (unless (file-readable-p source-file)
-        (let ((content (jsonrpc-request (eglot-current-server) :java/classFileContents (list :uri uri)))
-              (metadata-file (format "%s.%s.metadata"
-                                     (file-name-directory source-file)
-                                     (file-name-base source-file))))
-          (message "content:%s" content)
-          (unless (file-directory-p cache-dir) (make-directory cache-dir t))
-          (with-temp-file source-file (insert content))
-          (with-temp-file metadata-file (insert uri))))
-      source-file))
-
-  (add-to-list 'file-name-handler-alist '("\\`jdt://" . jdt-file-name-handler))
-
-  (defun jdthandler--wrap-legacy-eglot--path-to-uri (original-fn &rest args)
-  "Hack until eglot is updated.
-ARGS is a list with one element, a file path or potentially a URI.
-If path is a jar URI, don't parse. If it is not a jar call ORIGINAL-FN."
-  (let ((path (file-truename (car args))))
-    (if (equal "jdt" (url-type (url-generic-parse-url path)))
-        path
-      (apply original-fn args))))
-
-  (defun jdthandler--wrap-legacy-eglot--uri-to-path (original-fn &rest args)
-    "Hack until eglot is updated.
-ARGS is a list with one element, a URI.
-If URI is a jar URI, don't parse and let the `jdthandler--file-name-handler'
-handle it. If it is not a jar call ORIGINAL-FN."
-    (let ((uri (car args)))
-      (if (and (stringp uri)
-               (string= "jdt" (url-type (url-generic-parse-url uri))))
-          uri
-        (apply original-fn args))))
-
-  (defun jdthandler-patch-eglot ()
-    "Patch old versions of Eglot to work with Jdthandler."
-    (interactive) ;; TODO, remove when eglot is updated in melpa
-    (unless (and (advice-member-p #'jdthandler--wrap-legacy-eglot--path-to-uri 'eglot--path-to-uri)
-                 (advice-member-p #'jdthandler--wrap-legacy-eglot--uri-to-path 'eglot--uri-to-path))
-      (advice-add 'eglot--path-to-uri :around #'jdthandler--wrap-legacy-eglot--path-to-uri)
-      (advice-add 'eglot--uri-to-path :around #'jdthandler--wrap-legacy-eglot--uri-to-path)
-      (message "[jdthandler] Eglot successfully patched.")))
-
-  ;; invoke
-  (jdthandler-patch-eglot)
-)
-
-(use-package eglot-java-lombok
-  :straight (eglot-java-lombok :type git :host github :repo "ltylty/eglot-java-lombok")
-  :after eglot
-  :config
-  (eglot-java-lombok/init))
-
-(use-package eglot-java
-  :disabled t
+(use-package lsp-mode
   :straight t
-  ;; :custom
-  ;; (eglot-java-eglot-server-programs-manual-updates t)
+  :hook (((java-mode java-ts-mode) . lsp-deferred)
+	 (python-mode . lsp-deferred)
+	 (rust-mode . lsp-deferred))
+  :bind-keymap ("C-c l" . lsp-mode-map)
+  :commands (lsp lsp-deferred))
+
+(use-package lsp-ui
+  :straight t
+  :commands lsp-ui-mode)
+
+;; Configure for packages that use Lombok
+(use-package lsp-java
+  :straight t
   :config
-  (add-to-list 'eglot-java-eclipse-jdt-args
-               (format "-javaagent:%s" (expand-file-name "~/.emacs.d/var/lombok.jar"))
+  (add-to-list 'lsp-java-vmargs
+               (format "-javaagent:%s" (expand-file-name "~/.emacs.d/lombok.jar"))
                t))
 
 (use-package copilot
@@ -1336,6 +1205,7 @@ targets."
 
 (use-package doom-themes
   :straight t
+  :defer t
   :config
   ;; Global settings (defaults)
   (setq doom-themes-enable-bold t
