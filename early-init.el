@@ -63,3 +63,5 @@
 
 ;; name the default frame as "home"
 ;; (add-hook 'after-init-hook (lambda () (set-frame-name "home")))
+
+(setenv "LSP_USE_PLISTS" "true")

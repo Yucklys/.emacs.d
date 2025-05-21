@@ -643,6 +643,20 @@ Tiny template package alternative to ~yasnippet~. It is light-weight and use the
   (use-package tempel-collection
     :straight t
     :after tempel)
+
+  (use-package lsp-snippet-tempel
+    :straight (lsp-snippet-tempel :type git
+                                  :host github
+                                  :repo "svaante/lsp-snippet")
+    :after lsp-mode
+    :config
+    (when (featurep 'lsp-mode)
+      ;; Initialize lsp-snippet -> tempel in lsp-mode
+      (lsp-snippet-tempel-lsp-mode-init))
+    (when (featurep 'eglot)
+      ;; Initialize lsp-snippet -> tempel in eglot
+      (lsp-snippet-tempel-eglot-init)))
+
 #+end_src
 ** YASnippet
 #+begin_src emacs-lisp :tangle no
@@ -1016,23 +1030,88 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
     :straight t
     :hook (((java-mode java-ts-mode) . lsp-deferred)
   	 (python-mode . lsp-deferred)
-  	 (rust-mode . lsp-deferred))
-    :bind-keymap ("C-c l" . lsp-mode-map)
-    :commands (lsp lsp-deferred))
+  	 (rust-mode . lsp-deferred)
+  	 (lsp-completion-mode . yu/lsp-mode-setup-completion))
+    :init
+    (defun yu/lsp-mode-setup-completion ()
+      (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
+            '(orderless)) ;; Configure orderless
+      (setq-local completion-at-point-functions
+  		(list (cape-capf-super
+                         #'lsp-completion-at-point
+                         #'tempel-expand
+                         #'cape-file))))
+    :bind (:map lsp-mode-map
+  	      ("C-c c a" . lsp-execute-code-action)
+                ("C-c c r" . lsp-rename)
+                ("C-c c f" . lsp-format-buffer)
+                ("C-c c d" . lsp-find-definition)
+                ("C-c c D" . lsp-find-declaration)
+                ("C-c c I" . lsp-find-implementation)
+                ("C-c c T" . lsp-find-type-definition)
+                ("C-c c R" . lsp-find-references)
+                ("C-c c h" . lsp-describe-thing-at-point)
+                ("C-c c s" . lsp-workspace-symbol)
+                ("C-c c S" . lsp-document-symbol)
+                ("C-c c o" . lsp-organize-imports)
+                ("C-c c x" . lsp-diagnostics)
+                ("C-c c n" . lsp-flycheck-next-error)
+                ("C-c c p" . lsp-flycheck-previous-error)
+                ("C-c c SPC" . lsp-signature-help)
+                ("C-c c !"   . lsp-restart-workspace))
+    :commands (lsp lsp-deferred)
+    :custom
+    (lsp-enable-file-watchers t)
+    (lsp-completion-provider :none) ;; use corfu instead
+    (lsp-use-plists t)
+    :config
+    ;; custom file watch ignored files
+    (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\build\\'")
+    (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.bemol\\'")
+    (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\env\\'")
+    )
 
   (use-package lsp-ui
     :straight t
     :commands lsp-ui-mode)
+#+end_src
+Enable plist in =early-init.el=.
+#+begin_src emacs-lisp :tangle ./early-init.el
+  (setenv "LSP_USE_PLISTS" "true")
+#+end_src
 
-  ;; Configure for packages that use Lombok
-  (use-package lsp-java
-    :straight t
-    :config
-    (add-to-list 'lsp-java-vmargs
-                 (format "-javaagent:%s" (expand-file-name "~/.emacs.d/lombok.jar"))
-                 t))
+Enable [[https://github.com/blahgeek/emacs-lsp-booster?tab=readme-ov-file][emacs-lsp-booster]] for =lsp-mode= to improve performance.
+#+begin_src emacs-lisp
+  (defun lsp-booster--advice-json-parse (old-fn &rest args)
+    "Try to parse bytecode instead of json."
+    (or
+     (when (equal (following-char) ?#)
+       (let ((bytecode (read (current-buffer))))
+         (when (byte-code-function-p bytecode)
+           (funcall bytecode))))
+     (apply old-fn args)))
+  (advice-add (if (progn (require 'json)
+                         (fboundp 'json-parse-buffer))
+                  'json-parse-buffer
+                'json-read)
+              :around
+              #'lsp-booster--advice-json-parse)
 
-
+  (defun lsp-booster--advice-final-command (old-fn cmd &optional test?)
+    "Prepend emacs-lsp-booster command to lsp CMD."
+    (let ((orig-result (funcall old-fn cmd test?)))
+      (if (and (not test?)                             ;; for check lsp-server-present?
+               (not (file-remote-p default-directory)) ;; see lsp-resolve-final-command, it would add extra shell wrapper
+               lsp-use-plists
+               (not (functionp 'json-rpc-connection))  ;; native json-rpc
+               (executable-find "emacs-lsp-booster"))
+          (progn
+            (when-let ((command-from-exec-path (executable-find (car orig-result))))  ;; resolve command from exec-path (in case not found in $PATH)
+              (setcar orig-result command-from-exec-path))
+            (message "Using emacs-lsp-booster for %s!" orig-result)
+            (cons "emacs-lsp-booster" orig-result))
+        orig-result)))
+  (advice-add 'lsp-resolve-final-command :around #'lsp-booster--advice-final-command)
 #+end_src
 ** Copilot
 Use ~copilot~ to provide code completion. It is a language server that provides completion and other features for many languages.
@@ -1212,18 +1291,23 @@ Use ~copilot~ to provide code completion. It is a language server that provides 
     (undo-fu-session-global-mode))
 #+end_src
 ** Code folding
-*** ts-fold
 #+begin_src emacs-lisp
-  (use-package ts-fold
-    :straight (ts-fold :type git :host github :repo "emacs-tree-sitter/ts-fold")
-    :defer t
-    :config
-    (custom-set-faces! '(ts-fold-replacement-face :foreground unspecified
-                                                  :box nil
-                                                  :inherit font-lock-comment-face
-                                                  :weight light))
-    (setq ts-fold-replacement "  [...]  ")
-    (ts-fold-mode +1))
+  (use-package treesit-fold
+    :straight (treesit-fold :type git :host github :repo "emacs-tree-sitter/treesit-fold")
+    :bind (:map treesit-fold-mode-map
+  	      ("C-c @ t" . 'treesit-fold-toggle)
+  	      ("C-c @ o" . 'treesit-fold-open-recursively)
+  	      ("C-c @ O" . 'treesit-fold-open-all)
+  	      ("C-c @ c" . 'treesit-fold-close)
+  	      ("C-c @ C" . 'treesit-fold-close-all))
+    :init
+    (global-treesit-fold-mode))
+
+  (use-package treesit-fold-indicators
+    :straight (treesit-fold-indicators :type git :host github :repo "emacs-tree-sitter/treesit-fold")
+    :after treesit-fold
+    :init
+    (global-treesit-fold-indicators-mode))
 #+end_src
 ** Rime
 #+begin_src emacs-lisp
@@ -1946,12 +2030,12 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
             (toml       "https://github.com/tree-sitter/tree-sitter-toml")
             (tsx        "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src")
             (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src")
+            (java       "https://github.com/tree-sitter/tree-sitter-java")
 
             ;; Available from outside of the main tree-sitter organization.
             (clojure    "https://github.com/sogaiu/tree-sitter-clojure")
             (cmake      "https://github.com/uyha/tree-sitter-cmake")
             (elisp      "https://github.com/Wilfred/tree-sitter-elisp")
-            (java       "https://github.com/serenadeai/java-tree-sitterl")
             (make       "https://github.com/alemuller/tree-sitter-make")
             (markdown   "https://github.com/ikatyang/tree-sitter-markdown")
             (yaml       "https://github.com/ikatyang/tree-sitter-yaml")
@@ -2307,6 +2391,19 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   	(add-to-list 'auto-mode-alist '("\\.Snw$" . poly-noweb+r-mode))
   	(add-to-list 'auto-mode-alist '("\\.Rnw$" . poly-noweb+r-mode))
   	(add-to-list 'auto-mode-alist '("\\.Rmd$" . poly-markdown+r-mode)))
+#+end_src
+** Java
+#+begin_src emacs-lisp
+  ;; Configure for packages that use Lombok
+  (use-package lsp-java
+    :straight t
+    :mode ("\\.java\\'" . java-ts-mode) ;; use treesiter
+    :custom
+    (lsp-inlay-hint-enable t)
+    :config
+    (add-to-list 'lsp-java-vmargs
+                 (format "-javaagent:%s" (expand-file-name "~/.emacs.d/lombok.jar"))
+                 t))
 #+end_src
 ** Web developing
 #+begin_src emacs-lisp
