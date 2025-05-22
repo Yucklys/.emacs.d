@@ -304,6 +304,9 @@ Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check i
 
      ;; amz-coral
      (use-package amz-coral)
+
+     ;; smithy-mode
+     (use-package smithy-mode)
      )
 #+end_src
 
@@ -330,11 +333,11 @@ Corfu enhances in-buffer completion with a small completion popup. It hooks to ~
     :custom
     (corfu-cycle t)
     (corfu-quit-no-match 'separator)
-    (corfu-preselect 'prompt)
+    (corfu-preselect 'valid)
     ;; auto completion settings
     (corfu-auto t)
     (completion-cycle-threshold 3) ;; use tab to cycle when with a few candidate
-    (tab-always-indent 'complete) ;; always try to indent first
+    (tab-always-indent 'complete) ;; tab will try to indent, then complete
     ;; Emacs 30: Disable Ispell completion
     (text-mode-ispell-word-completion nil)
     
@@ -608,7 +611,7 @@ Tiny template package alternative to ~yasnippet~. It is light-weight and use the
     :straight t
     ;; Require trigger prefix before template name when completing.
     :custom
-    (tempel-trigger-prefix nil)
+    (tempel-trigger-prefix ">")
 
     :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
            ("M-*" . tempel-insert))
@@ -1037,10 +1040,8 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
       (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
             '(orderless)) ;; Configure orderless
       (setq-local completion-at-point-functions
-  		(list (cape-capf-super
-                         #'lsp-completion-at-point
-                         #'tempel-expand
-                         #'cape-file))))
+  		(list (cape-capf-buster
+                         #'lsp-completion-at-point))))
     :bind (:map lsp-mode-map
   	      ("C-c c a" . lsp-execute-code-action)
                 ("C-c c r" . lsp-rename)
@@ -1073,7 +1074,23 @@ Flycheck is a syntax cheker package besides build-in ~flymake~. It supports more
 
   (use-package lsp-ui
     :straight t
-    :commands lsp-ui-mode)
+    :commands lsp-ui-mode
+    :bind (:map lsp-ui-mode-map
+  	      ([remap xref-find-definitions] . 'lsp-ui-peek-find-definitions)
+  	      ([remap xref-find-references] . 'lsp-ui-peek-find-references))
+    :custom
+    (lsp-ui-peek-enable t)
+    (lsp-ui-peek-show-directory t)
+    (lsp-ui-sideline-show-hover t)
+    )
+
+  (use-package lsp-treemacs
+    :straight
+    :after lsp-ui
+    :init
+    (lsp-treemacs-sync-mode)
+    :bind (:map lsp-mode-map
+  	      ("C-c c e" . 'lsp-treemacs-errors-list)))
 #+end_src
 Enable plist in =early-init.el=.
 #+begin_src emacs-lisp :tangle ./early-init.el
@@ -1302,12 +1319,6 @@ Use ~copilot~ to provide code completion. It is a language server that provides 
   	      ("C-c @ C" . 'treesit-fold-close-all))
     :init
     (global-treesit-fold-mode))
-
-  (use-package treesit-fold-indicators
-    :straight (treesit-fold-indicators :type git :host github :repo "emacs-tree-sitter/treesit-fold")
-    :after treesit-fold
-    :init
-    (global-treesit-fold-indicators-mode))
 #+end_src
 ** Rime
 #+begin_src emacs-lisp
@@ -1373,20 +1384,14 @@ Another workaround of using IM inside Emacs. SIS add predicates and switches for
   	(add-hook 'meow-vterm-insert-mode-hook #'sis-set-english)
     (add-to-list 'sis-context-hooks 'meow-insert-enter-hook))
 #+end_src
-** Quail Dvorak layout
-Define a dvorak keyboard using ~quail~ package. This will add a new input method ~dvorak~ which implement dvorak layout, and can be enabled by ~toggle-input-method~.
+** Git diffs
 #+begin_src emacs-lisp
-;; Change keyboard layout
-;; (use-package quail
-;;   :config
-;;   (add-to-list 'quail-keyboard-layout-alist
-;;                `("dvorak" . ,(concat "                              "
-;;                                      "  1!2@3#4$5%6^7&8*9(0)[{]}`~  "
-;;                                      "  '\",<.>pPyYfFgGcCrRlL/?=+    "
-;;                                      "  aAoOeEuUiIdDhHtTnNsS-_\\|    "
-;;                                      "  ;:qQjJkKxXbBmMwWvVzZ        "
-;;                                      "                              ")))
-;;   (quail-set-keyboard-layout "dvorak"))
+  (use-package diff-hl
+    :straight t
+    :init
+    (global-diff-hl-mode)
+    :hook
+    (magit-post-refresh . diff-hl-magit-post-refresh))
 #+end_src
 * Shell
 ** eshell
@@ -1477,7 +1482,7 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   (advice-add #'embark-completing-read-prompter
               :around #'embark-hide-which-key-indicator)
 #+end_src
-** ace-window
+** Window management
 #+begin_src emacs-lisp
   ;; Better other-window
   (use-package ace-window
@@ -1487,6 +1492,18 @@ Define a dvorak keyboard using ~quail~ package. This will add a new input method
   	;; switch windows inside current frame
   	(setq aw-scope 'frame)
   	)
+#+end_src
+
+Some keybindings for built-in emacs window management.
+#+begin_src emacs-lisp
+  (defun zoom-window()
+    "Maximize the window  or bring back the previous layout."
+    (interactive)
+    (if (window-parent)
+        (delete-other-windows)
+      (winner-undo)))
+
+  (keymap-global-set "C-x 1" 'zoom-window)
 #+end_src
 ** Projectile
 #+begin_src emacs-lisp

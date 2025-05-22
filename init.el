@@ -210,6 +210,9 @@
 
    ;; amz-coral
    (use-package amz-coral)
+
+   ;; smithy-mode
+   (use-package smithy-mode)
    )
 
 (use-package amz-brief
@@ -228,11 +231,11 @@
   :custom
   (corfu-cycle t)
   (corfu-quit-no-match 'separator)
-  (corfu-preselect 'prompt)
+  (corfu-preselect 'valid)
   ;; auto completion settings
   (corfu-auto t)
   (completion-cycle-threshold 3) ;; use tab to cycle when with a few candidate
-  (tab-always-indent 'complete) ;; always try to indent first
+  (tab-always-indent 'complete) ;; tab will try to indent, then complete
   ;; Emacs 30: Disable Ispell completion
   (text-mode-ispell-word-completion nil)
   
@@ -487,7 +490,7 @@
   :straight t
   ;; Require trigger prefix before template name when completing.
   :custom
-  (tempel-trigger-prefix nil)
+  (tempel-trigger-prefix ">")
 
   :bind (("M-+" . tempel-complete) ;; Alternative tempel-expand
          ("M-*" . tempel-insert))
@@ -727,10 +730,8 @@
     (setf (alist-get 'styles (alist-get 'lsp-capf completion-category-defaults))
           '(orderless)) ;; Configure orderless
     (setq-local completion-at-point-functions
-		(list (cape-capf-super
-                       #'lsp-completion-at-point
-                       #'tempel-expand
-                       #'cape-file))))
+		(list (cape-capf-buster
+                       #'lsp-completion-at-point))))
   :bind (:map lsp-mode-map
 	      ("C-c c a" . lsp-execute-code-action)
               ("C-c c r" . lsp-rename)
@@ -763,7 +764,23 @@
 
 (use-package lsp-ui
   :straight t
-  :commands lsp-ui-mode)
+  :commands lsp-ui-mode
+  :bind (:map lsp-ui-mode-map
+	      ([remap xref-find-definitions] . 'lsp-ui-peek-find-definitions)
+	      ([remap xref-find-references] . 'lsp-ui-peek-find-references))
+  :custom
+  (lsp-ui-peek-enable t)
+  (lsp-ui-peek-show-directory t)
+  (lsp-ui-sideline-show-hover t)
+  )
+
+(use-package lsp-treemacs
+  :straight
+  :after lsp-ui
+  :init
+  (lsp-treemacs-sync-mode)
+  :bind (:map lsp-mode-map
+	      ("C-c c e" . 'lsp-treemacs-errors-list)))
 
 (defun lsp-booster--advice-json-parse (old-fn &rest args)
   "Try to parse bytecode instead of json."
@@ -974,12 +991,6 @@
   :init
   (global-treesit-fold-mode))
 
-(use-package treesit-fold-indicators
-  :straight (treesit-fold-indicators :type git :host github :repo "emacs-tree-sitter/treesit-fold")
-  :after treesit-fold
-  :init
-  (global-treesit-fold-indicators-mode))
-
 (use-package rime
   :straight (rime :type git
                   :host github
@@ -1039,17 +1050,12 @@
 	(add-hook 'meow-vterm-insert-mode-hook #'sis-set-english)
   (add-to-list 'sis-context-hooks 'meow-insert-enter-hook))
 
-;; Change keyboard layout
-;; (use-package quail
-;;   :config
-;;   (add-to-list 'quail-keyboard-layout-alist
-;;                `("dvorak" . ,(concat "                              "
-;;                                      "  1!2@3#4$5%6^7&8*9(0)[{]}`~  "
-;;                                      "  '\",<.>pPyYfFgGcCrRlL/?=+    "
-;;                                      "  aAoOeEuUiIdDhHtTnNsS-_\\|    "
-;;                                      "  ;:qQjJkKxXbBmMwWvVzZ        "
-;;                                      "                              ")))
-;;   (quail-set-keyboard-layout "dvorak"))
+(use-package diff-hl
+  :straight t
+  :init
+  (global-diff-hl-mode)
+  :hook
+  (magit-post-refresh . diff-hl-magit-post-refresh))
 
 ;; Use pcomplete to generate shell completion
 (use-package pcmpl-args
@@ -1140,6 +1146,15 @@ targets."
 	;; switch windows inside current frame
 	(setq aw-scope 'frame)
 	)
+
+(defun zoom-window()
+  "Maximize the window  or bring back the previous layout."
+  (interactive)
+  (if (window-parent)
+      (delete-other-windows)
+    (winner-undo)))
+
+(keymap-global-set "C-x 1" 'zoom-window)
 
 ;; Better project management
 (use-package projectile
