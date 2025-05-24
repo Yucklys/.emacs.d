@@ -755,11 +755,15 @@
   (lsp-enable-file-watchers t)
   (lsp-completion-provider :none) ;; use corfu instead
   (lsp-use-plists t)
+  (read-process-output-max (* 1024 1024)) ;; increase the amount of data reads from the process
+  (lsp-log-io nil) ;; only enable logging when debugging
   :config
   ;; custom file watch ignored files
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\build\\'")
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\.bemol\\'")
   (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\env\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\generated-src\\'")
+  (add-to-list 'lsp-file-watch-ignored-directories "[/\\\\]\\generated-tst\\'")
   )
 
 (use-package lsp-ui
@@ -771,7 +775,6 @@
   :custom
   (lsp-ui-peek-enable t)
   (lsp-ui-peek-show-directory t)
-  (lsp-ui-sideline-show-hover t)
   )
 
 (use-package lsp-treemacs
@@ -1640,6 +1643,8 @@ The exact color values are taken from the active Ef theme."
   :config (magit-todos-mode 1))
 
 (use-package treesit
+  :mode
+  (("\\.ts\\'" . typescript-ts-mode))
   :config
   (setq treesit-language-source-alist
 	'(
