@@ -1346,19 +1346,25 @@ targets."
     (add-hook 'server-after-make-frame-hook #'yu/load-theme)
   (yu/load-theme))
 
-(use-package doom-modeline
-  :straight t
-  :defer t
-  :init (doom-modeline-mode 1)
-  :custom
-  (doom-modeline-support-imenu t)
-  (doom-modeline-hud t) ; Disable graphical modeline
-  (doom-modeline-modal t) ; Show INSERT/NORMAL for modal editor
-  (doom-modeline-modal-icon t) ; Show icons for modal editor
-  (doom-modeline-height 32) ; Set the height of modeline
-  (doom-modeline-icon t)
-  ;; (doom-modeline-display-default-persp-name t)
-  )
+(use-package awesome-tray
+  :straight (awesome-tray :host github :repo "manateelazycat/awesome-tray")
+  :init
+  (awesome-tray-mode 1)
+  :config
+  (setq awesome-tray-meow-show-mode t)
+  
+  (defun yu/module-org-clock ()
+    "The module for awesome-tray that display org-clock timer."
+    (if org-clock-is-active
+	(format "<Task: %s>" org-clock-string)
+      ""))
+  (defface yu/module-org-clock-face
+    '((t (:italic t)))
+    "Org-clock module face."
+    :group 'awesome-tray)
+  (add-to-list 'awesome-tray-module-alist '("org-clock" . (yu/module-org-clock yu/module-org-clock-face)))
+  
+  (setq awesome-tray-active-modules '("org-clock" "meow" "git" "location" "belong" "file-path" "mode-name" "flycheck")))
 
 (use-package dashboard
   :straight t
