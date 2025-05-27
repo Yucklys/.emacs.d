@@ -219,8 +219,6 @@
      :straight (:host nil :repo "ssh://git.amazon.com:2222/pkg/Emacs-org-issues-mode"
 		      :files ("README.org" "*.el" "*/*.el"))
      :after consult
-     :init
-     (org-issues-update/monitor-issues)
      :bind ("C-c i" . 'org-issues))
    )
 
