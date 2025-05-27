@@ -228,9 +228,9 @@
   :bind (:map amz-brief-mode-map
            ("C-<tab>" . amz-brief))
   :config
-  (setq amz-brief-default-host "zkli-clouddesk.aka.corp.amazon.com"
+  (setq amz-brief-default-host "devdesk"
         amz-brief-remote-workplace-dir "~/workplace"
-        amz-brief-preferred-development-style "HYBRID"
+        amz-brief-preferred-development-style "LOCAL-ONLY"
         amz-brief-autosave-custom-commands t))
 
 (use-package corfu
