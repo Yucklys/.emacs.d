@@ -1807,8 +1807,10 @@ The exact color values are taken from the active Ef theme."
   :defer t
   :config
   (setq org-capture-templates '(
-                                ("t" "Todo" entry (file+headline "todo.org" "Task")
-                                 "** TODO %?\n")
+				("w" "Web Link" entry (file+headline "~/org/inbox.org" "Web Links")
+				 "* %^{Link Title}\n:PROPERTIES:\n:URL: %^{URL}\n:END:\n\n%i%?"
+				 :prepend t
+				 :empty-lines 1)
                                 )))
 
 (use-package denote
