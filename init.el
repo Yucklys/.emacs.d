@@ -1750,7 +1750,7 @@ The exact color values are taken from the active Ef theme."
   ;; Org files
   (org-directory "~/org/") ; Note directory
   (org-default-notes-file (concat org-directory "inbox.org")) ; Default entry point
-  (org-agenda-files (concat org-directory "inbox.org")) ; Agenda files
+  (org-agenda-files (list org-directory)) ; Agenda files
 
   ;; Useful settings
   (org-startup-folded (quote overview)) ; Fold all by default
@@ -1807,10 +1807,14 @@ The exact color values are taken from the active Ef theme."
   :defer t
   :config
   (setq org-capture-templates '(
-				("w" "Web Link" entry (file+headline "~/org/inbox.org" "Web Links")
+				("w" "Web Link" entry (file+headline "inbox.org" "Web Links")
 				 "* %^{Link Title}\n:PROPERTIES:\n:URL: %^{URL}\n:END:\n\n%i%?"
 				 :prepend t
 				 :empty-lines 1)
+				("t" "Todo" entry (file+headline "inbox.org" "Tasks")
+				 "** TODO %?\n")
+				("i" "Issue" entry (file+headline "inbox.org" "Issues")
+				 "** ISSUE %?\n")
                                 )))
 
 (use-package denote
