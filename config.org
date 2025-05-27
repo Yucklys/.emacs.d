@@ -307,6 +307,13 @@ Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check i
 
      ;; smithy-mode
      (use-package smithy-mode)
+
+     ;; SIM browser
+     (use-package org-issues
+       :straight (:host nil :repo "ssh://git.amazon.com:2222/pkg/Emacs-org-issues-mode")
+       :init
+       (org-issues-update/monitor-issues)
+       :bind ("C-c i" . 'org-issues))
      )
 #+end_src
 
@@ -375,8 +382,7 @@ Corfu enhances in-buffer completion with a small completion popup. It hooks to ~
       (corfu-mode))
 
     ;; Config for tab-and-go style
-    (dolist (c (list (cons "SPC" " ")
-                     (cons "," ",")
+    (dolist (c (list (cons "," ",")
                      (cons ")" ")")
                      (cons "}" "}")
                      (cons "]" "]")))
@@ -1690,23 +1696,49 @@ Some keybindings for built-in emacs window management.
     (setq ef-themes-to-toggle '(ef-winter ef-frost))
     (setq ef-themes-mixed-fonts t
   	ef-themes-variable-pitch-ui t)
-    ;; (setq ef-themes-headings ; read the manual's entry or the doc string
-    ;;     '((0 variable-pitch light 1.9)
-    ;;       (1 variable-pitch light 1.8)
-    ;;       (2 variable-pitch regular 1.7)
-    ;;       (3 variable-pitch regular 1.6)
-    ;;       (4 variable-pitch regular 1.5)
-    ;;       (5 variable-pitch 1.4) ; absence of weight means `bold'
-    ;;       (6 variable-pitch 1.3)
-    ;;       (7 variable-pitch 1.2)
-    ;;       (t variable-pitch 1.1)))
+
+    (defun my-ef-themes-org-modern-todo-faces ()
+      "Configure `org-modern-todo-faces`.
+  Uses Ef theme accent colors for keyword pill backgrounds
+  and a consistent dark Ef theme color for the foreground text for better visibility.
+  The exact color values are taken from the active Ef theme."
+      (ef-themes-with-colors
+        ;; Use a general dark foreground color from the Ef theme palette.
+        ;; Common variable names include `fg`, `ef-themes-fg`, `ef-themes-text`,
+        ;; or a specific dark color like `ef-themes-charcoal`.
+        ;; Replace `fg` with the correct variable if your Ef theme uses a different name.
+
+        (setq org-modern-todo-faces
+              `(;; Sequence 1
+  	      ("TODO"       . (:background ,red :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red)))
+  	      ("NEXT"       . (:background ,blue :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,blue)))
+  	      ("DONE"       . (:background ,green :foreground ,bg-dim :box (:line-width -1 :color ,green))) ; DONE usually not bold
+
+  	      ;; Sequence 2
+  	      ("ISSUE"      . (:background ,red-warmer :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red-warmer)))
+  	      ("BUG"        . (:background ,red-warmer :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red-warmer)))
+  	      ("FEATURE"    . (:background ,magenta :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,bg-dim)))
+  	      ("FIXED"      . (:background ,green-warmer :foreground ,bg-dim :box (:line-width -1 :color ,green-warmer))) ; Typically not bold once fixed
+
+  	      ;; Sequence 3
+  	      ("CANCEL"     . (:background ,yellow-warmer :foreground ,bg-dim :strike-through t :box (:line-width -1 :color ,yellow-warmer)))
+  	      ))))
+
+    ;; Add the function to the hook
+    (add-hook 'ef-themes-post-load-hook #'my-ef-themes-org-modern-todo-faces)
     )
 
-  (defun yu/load-theme () (load-theme 'ef-frost t))
+  ;; (defun yu/load-theme () (load-theme 'ef-frost t))
 
-  (if (daemonp)
-      (add-hook 'server-after-make-frame-hook #'yu/load-theme)
-    (yu/load-theme))
+
+  (use-package auto-dark
+    :straight t
+    :custom
+    (auto-dark-themes '((ef-winter) (ef-frost)))
+    :config
+    (if (daemonp)
+      (add-hook 'server-after-make-frame-hook #'auto-dark-mode)
+    (auto-dark-mode)))
 #+end_src
 ** Mode line
 #+begin_src emacs-lisp
@@ -2104,9 +2136,9 @@ Some keybindings for built-in emacs window management.
         ;; ol-rmail
         ;; ol-eww
         ))
-  	:bind
-  	(("C-c n l" . org-store-link)
-  	 ("C-c n a" . org-agenda))
+    :bind
+    (("C-c n l" . org-store-link)
+     ("C-c n a" . org-agenda))
     :custom-face
     (org-level-1 ((t (:height 1.4))))
     (org-level-2 ((t (:height 1.3))))
@@ -2118,7 +2150,7 @@ Some keybindings for built-in emacs window management.
     ;; Org files
     (org-directory "~/org/") ; Note directory
     (org-default-notes-file (concat org-directory "inbox.org")) ; Default entry point
-  	(org-agenda-files (list org-directory)) ; Agenda files
+    (org-agenda-files (concat org-directory "inbox.org")) ; Agenda files
 
     ;; Useful settings
     (org-startup-folded (quote overview)) ; Fold all by default
@@ -2132,16 +2164,12 @@ Some keybindings for built-in emacs window management.
                           (?C :foreground "#81A1C1")))
     (org-todo-keywords
      '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d)")
-       (sequence "REPORT(r)" "BUG(b)" "KNOWNCAUSE(k)" "|" "FIXED(f)")
+       (sequence "ISSUE(i)" "BUG(b)" "FEATURE(f)" "|" "FIXED(d)")
        (sequence "|" "CANCEL(c)")))
-    (org-todo-keyword-faces
-     '(("TODO" :foreground "#b48ead" :weight normal :underline t) ("NEXT" :foreground "#88c0d0" :weight normal :underline t) ("DONE" :foreground "#a3be8c" :weight normal :underline t)
-       ("ISSUE" :foreground "#bf616a" :weight normal :underline t) ("FIXED" :foreground "#a3be8c" :weight normal :underline t)
-       ("CANCEL" :foreground "#bf616a" :underline t)))
     (org-image-actual-width '(400))
     (org-reveal-root "https://revealjs.com")
-  	(setq org-use-sub-superscripts "{}") ; use a_{b} style to show subscripts
-  	)
+    (setq org-use-sub-superscripts "{}") ; use a_{b} style to show subscripts
+    )
 #+end_src
 *** Org appearance
 #+begin_src emacs-lisp
@@ -2269,6 +2297,15 @@ Some keybindings for built-in emacs window management.
 
     ;; automatically rename denote buffers
     (denote-rename-buffer-mode 1)
+    )
+#+end_src
+*** Org-ql
+#+begin_src emacs-lisp
+  (use-package org-ql
+    :straight (org-ql :host github :repo "alphapapa/org-ql"
+  		    :files (:defaults (:exclude "helm-org-ql.el")))
+    :config
+    
     )
 #+end_src
 *** Org appear
