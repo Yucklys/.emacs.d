@@ -150,77 +150,86 @@
 (use-package exec-path-from-shell
   :straight t
   :custom
-  (exec-path-from-shell-debug t)
   (exec-path-from-shell-shell-name "/bin/zsh")
+  (exec-path-from-shell-arguments nil)
   :config
   (exec-path-from-shell-initialize))
 
 (when (equal (system-name) "7cf34dda6815")
-   (straight-use-package
-    '(EmacsAmazonLibs :type git
-                      :host nil
-                      :build t
-                      :post-build (copy-file "emacs-amazon-libs/brazil-path-cache-artifacts"
-                                             (straight--build-dir "EmacsAmazonLibs"))
-                      :repo "ssh://git.amazon.com:2222/pkg/EmacsAmazonLibs")
+  (straight-use-package
+   '(EmacsAmazonLibs :type git
+                     :host nil
+                     :build t
+                     :post-build (copy-file "emacs-amazon-libs/brazil-path-cache-artifacts"
+                                            (straight--build-dir "EmacsAmazonLibs"))
+                     :repo "ssh://git.amazon.com:2222/pkg/EmacsAmazonLibs")
+   )
+
+  (add-to-list 'load-path "~/.emacs.d/straight/repos/EmacsAmazonLibs/emacs-amazon-libs/")
+  (use-package amz-common
+    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                     :files ("emacs-amazon-libs/amz-common.el"
+                             "emacs-amazon-libs/texi/*.texi"))
+    )
+  ;; integrate with brazil
+  (use-package amz-brazil-config
+    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                     :files ("emacs-amazon-libs/amz-brazil-config.el"))
+    )
+  (use-package amz-workspace
+    :after amz-common
+    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                     :files ("emacs-amazon-libs/amz-workspace.el"
+                             "emacs-amazon-libs/amz-coral.el"
+                             "emacs-amazon-libs/amz-bmds.el"
+                             "emacs-amazon-libs/amz-brazil-cache.el"
+                             "emacs-amazon-libs/amz-brazil-config-parser.el"
+                             "emacs-amazon-libs/amz-shell.el"
+                             "emacs-amazon-libs/brazil-path-cache-artifacts"))
+    :custom (amz-workspace-default-root-directory "~/local/projects")
+    )
+  (use-package amz-package
+    :after amz-workspace)
+  (use-package amz-brazil-cache)
+  ;; amazon q developer
+  (use-package amz-q-chat
+    :defer t
+    :bind (("C-c q t" . 'amz-q-chat-toggle)
+	   ("C-c q q" . 'amz-q-chat-stop)
+	   ("C-c q r" . 'amz-q-chat-restart)))
+  (use-package amz-q-ide
+    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                     :files ("emacs-amazon-libs/amz-q-ide.el"))
+    :after lsp-mode
+    :custom
+    (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
+    :config
+    (amz-q-ide-setup)
     )
 
-   (add-to-list 'load-path "~/.emacs.d/straight/repos/EmacsAmazonLibs/emacs-amazon-libs/")
-   (use-package amz-common
-     :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                      :files ("emacs-amazon-libs/amz-common.el"
-                              "emacs-amazon-libs/texi/*.texi"))
-     )
-   ;; integrate with brazil
-   (use-package amz-brazil-config
-     :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                      :files ("emacs-amazon-libs/amz-brazil-config.el"))
-     )
-   (use-package amz-workspace
-     :after amz-common
-     :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                      :files ("emacs-amazon-libs/amz-workspace.el"
-                              "emacs-amazon-libs/amz-coral.el"
-                              "emacs-amazon-libs/amz-bmds.el"
-                              "emacs-amazon-libs/amz-brazil-cache.el"
-                              "emacs-amazon-libs/amz-brazil-config-parser.el"
-                              "emacs-amazon-libs/amz-shell.el"
-                              "emacs-amazon-libs/brazil-path-cache-artifacts"))
-     :custom (amz-workspace-default-root-directory "~/local/projects")
-     )
-   (use-package amz-package
-     :after amz-workspace)
-   (use-package amz-brazil-cache)
-   ;; amazon q developer
-   (use-package amz-q-chat
-     :bind (("C-c q t" . 'amz-q-chat-toggle)
-	    ("C-c q q" . 'amz-q-chat-stop)
-	    ("C-c q r" . 'amz-q-chat-restart)))
-   (use-package amz-q-ide
-     :after lsp-mode
-     :custom
-     (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
-     :config
-     (amz-q-ide-setup)
-     )
+  ;; embark integration
+  (use-package amz-embark
+    :after embark)
 
-   ;; embark integration
-   (use-package amz-embark
-     :after embark)
+  ;; amz-coral
+  (use-package amz-coral)
 
-   ;; amz-coral
-   (use-package amz-coral)
+  ;; smithy-mode
+  (use-package smithy-mode)
 
-   ;; smithy-mode
-   (use-package smithy-mode)
+  ;; SIM browser
+  (use-package org-issues
+    :straight (:host nil :repo "ssh://git.amazon.com:2222/pkg/Emacs-org-issues-mode"
+		     :files ("README.org" "*.el" "*/*.el"))
+    :after consult
+    :bind ("C-c i" . 'org-issues))
 
-   ;; SIM browser
-   (use-package org-issues
-     :straight (:host nil :repo "ssh://git.amazon.com:2222/pkg/Emacs-org-issues-mode"
-		      :files ("README.org" "*.el" "*/*.el"))
-     :after consult
-     :bind ("C-c i" . 'org-issues))
-   )
+  ;; search internal
+  (use-package amz-search
+    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                     :files ("emacs-amazon-libs/amz-search.el"))
+    :bind (("C-c s a" . 'amazon-search-all-region)))
+  )
 
 (use-package amz-brief
   :straight '(amz-brief :type git :host nil :repo "ssh://git.amazon.com:2222/pkg/Brief")
@@ -230,7 +239,7 @@
   :config
   (setq amz-brief-default-host "devdesk"
         amz-brief-remote-workplace-dir "~/workplace"
-        amz-brief-preferred-development-style "LOCAL-ONLY"
+        amz-brief-preferred-development-style "HYBRID"
         amz-brief-autosave-custom-commands t))
 
 (use-package corfu
@@ -578,11 +587,12 @@
          ("C-c f b" . 'consult-bookmark)
          ("C-c f m" . 'consult-mark)
          ("C-c f o" . 'consult-outline)
-         ("C-c f r" . 'consult-recent-file)
+         ("C-c f r" . 'consult-register)
+	 ("C-c f R" . 'consult-recent-file)
          ("C-c f l" . 'consult-line)
          ("C-c f L" . 'consult-line-multi)
          ("C-c f g" . 'consult-ripgrep)
-         ("C-c f f" . 'consult-find)
+         ("C-c f f" . 'consult-fd)
          ("C-c f F" . 'consult-locate)
          ("C-c f h" . 'consult-complex-command)
          ("C-c f c" . 'consult-mode-command)
@@ -1394,22 +1404,34 @@ The exact color values are taken from the active Ef theme."
 
 (use-package dashboard
   :straight t
-	:init
+  :init
   (setq initial-buffer-choice 'dashboard-open)
-	:bind (:map dashboard-mode-map
-							("n" . dashboard-next-line)
-							("t" . dashboard-previous-line)
-							("N" . dashboard-next-section)
-							("T" . dashboard-previous-section))
+  :bind (:map dashboard-mode-map
+	      ("n" . dashboard-next-line)
+	      ("t" . dashboard-previous-line)
+	      ("N" . dashboard-next-section)
+	      ("T" . dashboard-previous-section))
   :custom
-  (dashboard-startup-banner '2)
+  (dashboard-startup-banner 'logo)
   (dashboard-projects-backend 'projectile) ; Get projects from projectile
+  (dashboard-projects-switch-function 'counsel-projectile-switch-project-by-name)
   ;; (dashboard-page-separator "\n\f\n")      ; Use page-break-lines
   (dashboard-center-content t)             ; Put content right
   (dashboard-agenda-release-buffers t)
   (dashboard-icon-type 'nerd-icons)
-  (dashboard-set-heading-icons nil)
-  (dashboard-set-file-icons nil)
+  (dashboard-set-heading-icons t)
+  (dashboard-set-file-icons t)
+  (dashboard-footer-messages
+   '("Emacs: Your infinitely configurable, lifelong text companion."
+     "Unlock new realms of productivity within Emacs."
+     "Emacs: More than an editor, it's a way of working."
+     "Crafting beautiful code and prose, all in the comfort of Emacs."
+     "Powered by Lisp, Emacs is limited only by yo67450ur imagination."
+     "Welcome to Emacs! What will you discover and create today?"
+     "Experience the freedom of a truly extensible and self-documenting environment: Emacs."
+     "Emacs: The ultimate tool for thought, organization, and creation."
+     "May your day be productive and your Emacs buffers always serve you well."
+     "Emacs: Turning complex tasks into elegant and efficient keystrokes."))
   :config
   (dashboard-modify-heading-icons '((recents . "nf-oct-history")
 				    (projects . "nf-oct-rocket")
@@ -1677,6 +1699,8 @@ The exact color values are taken from the active Ef theme."
 (use-package treesit
   :mode
   (("\\.ts\\'" . typescript-ts-mode))
+  :custom
+  (typescript-ts-mode-indent-offset 4)
   :config
   (setq treesit-language-source-alist
 	'(
