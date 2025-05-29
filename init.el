@@ -1076,6 +1076,20 @@
   :hook
   (magit-post-refresh . diff-hl-magit-post-refresh))
 
+(use-package tramp
+  :config
+  (add-to-list 'tramp-remote-path 'tramp-own-remote-path)
+  (setq tramp-use-ssh-controlmaster-options 'nil
+        tramp-default-remote-shell "/bin/bash")
+  ;; Use bash for amazon cloud desktop
+  (connection-local-set-profile-variables 'remote-bash
+                                          '((shell-file-name . "/bin/bash")
+                                            (shell-command-switch . "-ic")))
+  (connection-local-set-profiles
+   '(:application tramp :protocol "ssh" :machine "*.aka.corp.amazon.com")
+   'remote-bash)
+  )
+
 ;; Use pcomplete to generate shell completion
 (use-package pcmpl-args
   :straight t)
@@ -1089,16 +1103,20 @@
 
 (use-package vterm
   :straight t
-  :config
-  (if (eq system-type 'darwin)
-      (setq vterm-shell "/bin/zsh")
-    (setq vterm-shell "/run/current-system/sw/bin/nu"))
   )
 
+(use-package vterm-toggle
+  :straight t
+  :bind (("C-c t o" . 'vterm-toggle)
+	 :map vterm-mode-map
+	 ("s-n" . 'vterm-toggle-forward)
+	 ("s-p" . 'vterm-toggle-backward)
+	 ("C-<return>" . 'vterm-toggle-insert-cd)))
+
 (use-package meow-vterm
-	:straight (meow-vterm :type git :host github :repo "45mg/meow-vterm")
-	:config
-	(add-hook 'vterm-mode-hook #'meow-vterm-mode)
+  :straight (meow-vterm :type git :host github :repo "45mg/meow-vterm")
+  :config
+  (add-hook 'vterm-mode-hook #'meow-vterm-mode)
   (meow-define-keys 'vterm-normal
     '("y" . meow-vterm-yank)
     '("Y" . meow-vterm-yank-pop)
@@ -1109,7 +1127,7 @@
     '("k" . meow-vterm-delete)
     '("D" . meow-vterm-backspace)
     '("G" . ignore)) ; see below
-	)
+  )
 
 ;; Show my keybindings
 (use-package which-key
