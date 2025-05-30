@@ -215,7 +215,9 @@
   (use-package amz-coral)
 
   ;; smithy-mode
-  (use-package smithy-mode)
+  (use-package smithy-mode
+    :custom
+    (smithy-indent-basic 4))
 
   ;; SIM browser
   (use-package org-issues
@@ -591,8 +593,8 @@
          ("C-c f b" . 'consult-bookmark)
          ("C-c f m" . 'consult-mark)
          ("C-c f o" . 'consult-outline)
-         ("C-c f r" . 'consult-register)
-	 ("C-c f R" . 'consult-recent-file)
+	 ("C-c f r" . 'consult-recent-file)
+         ("C-c f R" . 'consult-register)
          ("C-c f l" . 'consult-line)
          ("C-c f L" . 'consult-line-multi)
          ("C-c f g" . 'consult-ripgrep)
@@ -1436,7 +1438,7 @@ The exact color values are taken from the active Ef theme."
   :custom
   (dashboard-startup-banner 'logo)
   (dashboard-projects-backend 'projectile) ; Get projects from projectile
-  (dashboard-projects-switch-function 'counsel-projectile-switch-project-by-name)
+  (dashboard-projects-switch-function 'consult-projectile--file)
   ;; (dashboard-page-separator "\n\f\n")      ; Use page-break-lines
   (dashboard-center-content t)             ; Put content right
   (dashboard-agenda-release-buffers t)
