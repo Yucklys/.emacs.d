@@ -150,7 +150,7 @@
 (use-package exec-path-from-shell
   :straight t
   :custom
-  (exec-path-from-shell-shell-name "/bin/zsh")
+  (exec-path-from-shell-shell-name "/opt/homebrew/bin/fish")
   (exec-path-from-shell-arguments nil)
   :config
   (exec-path-from-shell-initialize))
@@ -241,6 +241,10 @@
         amz-brief-remote-workplace-dir "~/workplace"
         amz-brief-preferred-development-style "HYBRID"
         amz-brief-autosave-custom-commands t))
+
+;; Support ansi-color text in compilation buffer
+(require 'ansi-color)
+(add-hook 'compilation-filter-hook #'ansi-color-compilation-filter)
 
 (use-package corfu
   :straight t
