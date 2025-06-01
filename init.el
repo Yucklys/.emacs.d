@@ -1101,38 +1101,26 @@
   :straight t)
 
 (use-package eshell-toggle
-	:straight (eshell-toggle :type git :host github :repo "4DA/eshell-toggle")
-	:bind ("C-~" . eshell-toggle)
-	:custom
-	(eshell-toggle-find-project-root-package t) ;; for projectile
-	)
-
-(use-package vterm
-  :straight t
+  :straight (eshell-toggle :type git :host github :repo "4DA/eshell-toggle")
+  :bind ("C-`" . eshell-toggle)
+  :custom
+  (eshell-toggle-find-project-root-package t) ;; for projectile
   )
 
-(use-package vterm-toggle
-  :straight t
-  :bind (("C-c t o" . 'vterm-toggle)
-	 :map vterm-mode-map
-	 ("s-n" . 'vterm-toggle-forward)
-	 ("s-p" . 'vterm-toggle-backward)
-	 ("C-<return>" . 'vterm-toggle-insert-cd)))
-
-(use-package meow-vterm
-  :straight (meow-vterm :type git :host github :repo "45mg/meow-vterm")
-  :config
-  (add-hook 'vterm-mode-hook #'meow-vterm-mode)
-  (meow-define-keys 'vterm-normal
-    '("y" . meow-vterm-yank)
-    '("Y" . meow-vterm-yank-pop)
-    '("u" . meow-vterm-undo)
-    '("x" . meow-vterm-yank)
-    '("X" . meow-vterm-yank-pop)
-    '("s" . meow-vterm-kill)
-    '("k" . meow-vterm-delete)
-    '("D" . meow-vterm-backspace)
-    '("G" . ignore)) ; see below
+(use-package eat
+  :straight (eat :type git
+		 :host codeberg
+		 :repo "akib/emacs-eat"
+		 :files ("*.el" ("term" "term/*.el") "*.texi"
+			 "*.ti" ("terminfo/e" "terminfo/e/*")
+			 ("terminfo/65" "terminfo/65/*")
+			 ("integration" "integration/*")
+			 (:exclude ".dir-locals.el" "*-tests.el")))
+  :hook
+  (eshell-load . 'eat-eshell-mode)
+  (eshell-load . 'eat-eshell-visual-command-mode)
+  :custom
+  (eat-shell "fish")
   )
 
 ;; Show my keybindings

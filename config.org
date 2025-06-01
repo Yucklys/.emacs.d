@@ -1441,14 +1441,14 @@ Another workaround of using IM inside Emacs. SIS add predicates and switches for
     :straight t)
 
   (use-package eshell-toggle
-  	:straight (eshell-toggle :type git :host github :repo "4DA/eshell-toggle")
-  	:bind ("C-~" . eshell-toggle)
-  	:custom
-  	(eshell-toggle-find-project-root-package t) ;; for projectile
-  	)
+    :straight (eshell-toggle :type git :host github :repo "4DA/eshell-toggle")
+    :bind ("C-`" . eshell-toggle)
+    :custom
+    (eshell-toggle-find-project-root-package t) ;; for projectile
+    )
 #+end_src
 ** vterm
-#+begin_src emacs-lisp
+#+begin_src emacs-lisp :tangle no
   (use-package vterm
     :straight t
     )
@@ -1475,6 +1475,26 @@ Another workaround of using IM inside Emacs. SIS add predicates and switches for
       '("k" . meow-vterm-delete)
       '("D" . meow-vterm-backspace)
       '("G" . ignore)) ; see below
+    )
+#+end_src
+** eat
+#+begin_src emacs-lisp
+
+
+  (use-package eat
+    :straight (eat :type git
+  		 :host codeberg
+  		 :repo "akib/emacs-eat"
+  		 :files ("*.el" ("term" "term/*.el") "*.texi"
+  			 "*.ti" ("terminfo/e" "terminfo/e/*")
+  			 ("terminfo/65" "terminfo/65/*")
+  			 ("integration" "integration/*")
+  			 (:exclude ".dir-locals.el" "*-tests.el")))
+    :hook
+    (eshell-load . 'eat-eshell-mode)
+    (eshell-load . 'eat-eshell-visual-command-mode)
+    :custom
+    (eat-shell "fish")
     )
 #+end_src
 * Enhancement
