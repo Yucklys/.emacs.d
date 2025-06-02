@@ -1793,7 +1793,7 @@ Some keybindings for built-in emacs window management.
   (use-package auto-dark
     :straight t
     :custom
-    (auto-dark-themes '(ef-frost ef-winter))
+    (auto-dark-themes '((ef-winter) (ef-frost)))
     :config
     (defun my-apply-correct-theme-for-client-frame ()
       "Determine the correct theme based on auto-dark-mode's logic and re-apply it.
@@ -1802,8 +1802,8 @@ Some keybindings for built-in emacs window management.
              ;; `auto-dark--is-dark-p` is an internal function of auto-dark-mode;
              ;; using `ignore-errors` makes this more robust against its potential changes.
              (is-dark (ignore-errors (auto-dark--is-dark-p)))
-             (light-theme-name (car auto-dark-themes))    ; Get the light theme name from your custom setting
-             (dark-theme-name (cadr auto-dark-themes))    ; Get the dark theme name
+             (light-theme-name (car (cadr auto-dark-themes)))    ; Get the light theme name from your custom setting
+             (dark-theme-name (car (car auto-dark-themes)))    ; Get the dark theme name
              (target-theme (if is-dark dark-theme-name light-theme-name)))
 
         (when target-theme
@@ -1864,7 +1864,7 @@ Some keybindings for built-in emacs window management.
     :custom
     (dashboard-startup-banner 'logo)
     (dashboard-projects-backend 'projectile) ; Get projects from projectile
-    (dashboard-projects-switch-function 'consult-projectile--file)
+    (dashboard-projects-switch-function 'projectile-switch-project-by-name)
     ;; (dashboard-page-separator "\n\f\n")      ; Use page-break-lines
     (dashboard-center-content t)             ; Put content right
     (dashboard-agenda-release-buffers t)
@@ -2671,6 +2671,13 @@ Some keybindings for built-in emacs window management.
   		java-ts-mode-indent-offset)
   	       ((parent-is "block") standalone-parent
   		java-ts-mode-indent-offset))))
+    )
+#+end_src
+** Typescript
+#+begin_src emacs-lisp
+  (use-package typescript-ts-mode
+    :custom
+    (typescript-ts-mode-indent-offset 2)
     )
 #+end_src
 ** Web developing
