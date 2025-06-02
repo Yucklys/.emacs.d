@@ -1650,6 +1650,10 @@ Some keybindings for built-in emacs window management.
     (if (not (version< emacs-version "29"))
         (setq dired-mouse-drag-files t
   	    mouse-drag-and-drop-region-cross-program t))
+    :config
+    (when (string-equal system-type "darwin") ; Check if on macOS
+      (setq insert-directory-program "gls")
+      )
     )
 #+end_src
 ** Treemacs
@@ -1789,11 +1793,46 @@ Some keybindings for built-in emacs window management.
   (use-package auto-dark
     :straight t
     :custom
-    (auto-dark-themes '((ef-winter) (ef-frost)))
+    (auto-dark-themes '(ef-frost ef-winter))
     :config
+    (defun my-apply-correct-theme-for-client-frame ()
+      "Determine the correct theme based on auto-dark-mode's logic and re-apply it.
+  This is intended to fix theme rendering issues on new emacsclient frames."
+      (let* (;; Safely try to determine if the system is in dark mode.
+             ;; `auto-dark--is-dark-p` is an internal function of auto-dark-mode;
+             ;; using `ignore-errors` makes this more robust against its potential changes.
+             (is-dark (ignore-errors (auto-dark--is-dark-p)))
+             (light-theme-name (car auto-dark-themes))    ; Get the light theme name from your custom setting
+             (dark-theme-name (cadr auto-dark-themes))    ; Get the dark theme name
+             (target-theme (if is-dark dark-theme-name light-theme-name)))
+
+        (when target-theme
+          ;; To ensure a clean application, you might want to disable the "other" theme
+          ;; from the pair if it's somehow still considered active for this frame.
+          (let ((other-theme (if is-dark light-theme-name dark-theme-name)))
+            (when (and other-theme (custom-theme-enabled-p other-theme))
+              (disable-theme other-theme)))
+
+          ;; Re-load the target theme. The 't' argument means do not confirm
+          ;; and do not process customizations again, effectively forcing a refresh
+          ;; of the theme's appearance.
+          (load-theme target-theme t)
+          ;; (Optional) You can add a message to confirm this ran:
+          ;; (message "Applied theme %s to new client frame." target-theme)
+          )))
+
     (if (daemonp)
-      (add-hook 'server-after-make-frame-hook #'auto-dark-mode)
-    (auto-dark-mode)))
+        (progn
+          ;; 1. Enable auto-dark-mode for the initial daemon session.
+          (auto-dark-mode 1)
+          ;; 2. For new client frames, first run auto-dark-mode's standard logic,
+          ;;    then schedule our explicit theme re-application after a brief idle.
+          ;;    The idle timer ensures the frame is fully initialized before we try to fix the theme.
+          (add-hook 'server-after-make-frame-hook
+                    (lambda ()
+                      (auto-dark-mode 1) ; Let auto-dark-mode do its thing first
+                      (run-with-idle-timer 0 nil #'my-apply-correct-theme-for-client-frame))))
+      (auto-dark-mode)))
 #+end_src
 ** Mode line
 #+begin_src emacs-lisp
