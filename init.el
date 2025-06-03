@@ -193,6 +193,8 @@
   (use-package amz-brazil-cache)
   ;; amazon q developer
   (use-package amz-q-chat
+    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+                     :files ("emacs-amazon-libs/amz-q-chat.el"))
     :defer t
     :bind (("C-c q t" . 'amz-q-chat-toggle)
 	   ("C-c q q" . 'amz-q-chat-stop)
@@ -746,6 +748,7 @@
   :hook (((java-mode java-ts-mode) . lsp-deferred)
 	 (python-mode . lsp-deferred)
 	 (rust-mode . lsp-deferred)
+	 (typescript-ts-mode . lsp-deferred)
 	 (lsp-completion-mode . yu/lsp-mode-setup-completion))
   :init
   (defun yu/lsp-mode-setup-completion ()
@@ -1436,7 +1439,7 @@ This is intended to fix theme rendering issues on new emacsclient frames."
         (add-hook 'server-after-make-frame-hook
                   (lambda ()
                     (auto-dark-mode 1) ; Let auto-dark-mode do its thing first
-                    (run-with-idle-timer 0 nil #'my-apply-correct-theme-for-client-frame))))
+                    (run-with-idle-timer 1 nil #'my-apply-correct-theme-for-client-frame))))
     (auto-dark-mode)))
 
 (use-package doom-modeline
@@ -1748,8 +1751,6 @@ The exact color values are taken from the active Ef theme."
   :config (magit-todos-mode 1))
 
 (use-package treesit
-  :mode
-  (("\\.ts\\'" . typescript-ts-mode))
   :custom
   (typescript-ts-mode-indent-offset 4)
   :config
@@ -2202,6 +2203,20 @@ The exact color values are taken from the active Ef theme."
 (use-package typescript-ts-mode
   :custom
   (typescript-ts-mode-indent-offset 2)
+  :mode (("\\.ts\\'" . typescript-ts-mode))
+  :config
+  (defun my-custom-node-mode-selection ()
+    "Select major mode for #!/usr/bin/env node scripts.
+For .ts or .tsx files, use `typescript-ts-mode`.
+Otherwise, use `javascript-mode` (or your preferred JS mode for node scripts)."
+    (interactive) ; Good practice for mode functions
+    (if (and buffer-file-name (string-match-p "\\.tsx?\\'" buffer-file-name))
+	(typescript-ts-mode)
+      (javascript-mode))) ; Or 'js-mode, 'web-mode, etc. for your .js node scripts
+  (setq interpreter-mode-alist
+      (cons '("node" . my-custom-node-mode-selection)
+            (assq-delete-all "node" interpreter-mode-alist)))
+  (add-hook 'typescript-ts-mode-hook (lambda () (setq indent-tabs-mode nil)))
   )
 
 (add-to-list 'auto-mode-alist '("\\.tcss\\'" . css-ts-mode))
