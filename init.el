@@ -1814,7 +1814,9 @@ The exact color values are taken from the active Ef theme."
       ))
   :bind
   (("C-c n l" . org-store-link)
-   ("C-c n a" . org-agenda))
+   ("C-c n a" . org-agenda)
+   ("C-c n t t" . 'org-timestamp)
+   ("C-c n t i" . 'org-timestamp-inactive))
   :custom-face
   (org-level-1 ((t (:height 1.4))))
   (org-level-2 ((t (:height 1.3))))
