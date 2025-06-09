@@ -1883,12 +1883,15 @@ The exact color values are taken from the active Ef theme."
   :defer t
   :config
   (setq org-capture-templates '(
-				("w" "Web Link" entry (file+headline "inbox.org" "Web Links")
+				("W" "Web Link" entry (file+headline "inbox.org" "Web Links")
 				 "* %^{Link Title}\n:PROPERTIES:\n:URL: %^{URL}\n:END:\n\n%i%?"
 				 :prepend t
 				 :empty-lines 1)
 				("t" "Todo" entry (file+headline "inbox.org" "Tasks")
 				 "** TODO %?\n")
+				("T" "Sub Task" plain (here)
+				 "*** ISSUE %?\n**** Blockers\n**** Timeline\n"
+				 :empty-lines 1)
 				("i" "Issue" entry (file+headline "inbox.org" "Issues")
 				 "** ISSUE %?\n")
                                 )))
@@ -2102,7 +2105,7 @@ The exact color values are taken from the active Ef theme."
   (lsp-inlay-hint-enable t)
   :config
   (add-to-list 'lsp-java-vmargs
-               (format "-javaagent:%s" (expand-file-name "~/.emacs.d/lombok.jar"))
+               (format "-javaagent:%s" (expand-file-name "~/.emacs.d/var/lombok.jar"))
                t))
 
 ;; Use spaces instead tabs for indentation
