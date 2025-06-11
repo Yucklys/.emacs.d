@@ -292,16 +292,18 @@ Install =EmacsAmazonLibs= for work in Amazon. For more details about it, check i
       :defer t
       :bind (("C-c q t" . 'amz-q-chat-toggle)
   	   ("C-c q q" . 'amz-q-chat-stop)
-  	   ("C-c q r" . 'amz-q-chat-restart)))
-    (use-package amz-q-ide
-      :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                       :files ("emacs-amazon-libs/amz-q-ide.el"))
-      :after lsp-mode
+  	   ("C-c q r" . 'amz-q-chat-restart))
       :custom
-      (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
-      :config
-      (amz-q-ide-setup)
-      )
+      (amz-q-chat-popup-side 'right))
+    ;; (use-package amz-q-ide
+    ;;   :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+    ;;                    :files ("emacs-amazon-libs/amz-q-ide.el"))
+    ;;   :after lsp-mode
+    ;;   :custom
+    ;;   (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
+    ;;   :config
+    ;;   (amz-q-ide-setup)
+    ;;   )
 
     ;; embark integration
     (use-package amz-embark
@@ -1571,6 +1573,10 @@ Some keybindings for built-in emacs window management.
       (winner-undo)))
 
   (keymap-global-set "C-x 1" 'zoom-window)
+
+  (use-package winner
+    :init
+    (setq winner-mode t))
 #+end_src
 ** Projectile
 #+begin_src emacs-lisp
@@ -2582,7 +2588,9 @@ Some keybindings for built-in emacs window management.
     :config
     (add-to-list 'lsp-java-vmargs
                  (format "-javaagent:%s" (expand-file-name "~/.emacs.d/var/lombok.jar"))
-                 t))
+                 t)
+    (setq lsp-enable-indentation nil)
+    )
 
   ;; Use spaces instead tabs for indentation
   (add-hook 'java-ts-mode-hook (lambda () (setq indent-tabs-mode nil)))
@@ -2635,7 +2643,8 @@ Some keybindings for built-in emacs window management.
   	       ((match ">" "type_arguments") parent-bol 0)
   	       ((parent-is "type_arguments") parent-bol
   		java-ts-mode-indent-offset)
-  	       ((parent-is "method_invocation") parent-bol 8)
+  	       ((parent-is "method_invocation") parent-bol
+  		java-ts-mode-indent-offset)
   	       ((parent-is "switch_rule") parent-bol
   		java-ts-mode-indent-offset)
   	       ((parent-is "switch_label") parent-bol

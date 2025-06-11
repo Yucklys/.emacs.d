@@ -1,0 +1,3 @@
+alias bb brazil-build
+alias bws brazil ws $*
+alias brc brazil-recursive-cmd $*

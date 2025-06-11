@@ -198,16 +198,18 @@
     :defer t
     :bind (("C-c q t" . 'amz-q-chat-toggle)
 	   ("C-c q q" . 'amz-q-chat-stop)
-	   ("C-c q r" . 'amz-q-chat-restart)))
-  (use-package amz-q-ide
-    :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
-                     :files ("emacs-amazon-libs/amz-q-ide.el"))
-    :after lsp-mode
+	   ("C-c q r" . 'amz-q-chat-restart))
     :custom
-    (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
-    :config
-    (amz-q-ide-setup)
-    )
+    (amz-q-chat-popup-side 'right))
+  ;; (use-package amz-q-ide
+  ;;   :straight (:host nil :repo "ssh://git.amazon.com/pkg/EmacsAmazonLibs"
+  ;;                    :files ("emacs-amazon-libs/amz-q-ide.el"))
+  ;;   :after lsp-mode
+  ;;   :custom
+  ;;   (amz-lsp-codewhisperer-program "~/repos/AmazonQNVim/language-server/build/aws-lsp-codewhisperer-token-binary.js")
+  ;;   :config
+  ;;   (amz-q-ide-setup)
+  ;;   )
 
   ;; embark integration
   (use-package amz-embark
@@ -1190,6 +1192,10 @@ targets."
 
 (keymap-global-set "C-x 1" 'zoom-window)
 
+(use-package winner
+  :init
+  (setq winner-mode t))
+
 ;; Better project management
 (use-package projectile
   :straight t
@@ -2108,7 +2114,9 @@ The exact color values are taken from the active Ef theme."
   :config
   (add-to-list 'lsp-java-vmargs
                (format "-javaagent:%s" (expand-file-name "~/.emacs.d/var/lombok.jar"))
-               t))
+               t)
+  (setq lsp-enable-indentation nil)
+  )
 
 ;; Use spaces instead tabs for indentation
 (add-hook 'java-ts-mode-hook (lambda () (setq indent-tabs-mode nil)))
@@ -2161,7 +2169,8 @@ The exact color values are taken from the active Ef theme."
 	       ((match ">" "type_arguments") parent-bol 0)
 	       ((parent-is "type_arguments") parent-bol
 		java-ts-mode-indent-offset)
-	       ((parent-is "method_invocation") parent-bol 8)
+	       ((parent-is "method_invocation") parent-bol
+		java-ts-mode-indent-offset)
 	       ((parent-is "switch_rule") parent-bol
 		java-ts-mode-indent-offset)
 	       ((parent-is "switch_label") parent-bol
