@@ -1388,10 +1388,10 @@ The exact color values are taken from the active Ef theme."
 	      ("DONE"       . (:background ,green :foreground ,bg-dim :box (:line-width -1 :color ,green))) ; DONE usually not bold
 
 	      ;; Sequence 2
-	      ("ISSUE"      . (:background ,red-warmer :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red-warmer)))
-	      ("BUG"        . (:background ,red-warmer :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red-warmer)))
-	      ("FEATURE"    . (:background ,magenta :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,bg-dim)))
-	      ("FIXED"      . (:background ,green-warmer :foreground ,bg-dim :box (:line-width -1 :color ,green-warmer))) ; Typically not bold once fixed
+	      ("QUEUE"      . (:background ,blue :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red-warmer)))
+	      ("DOING"        . (:background ,red-warmer :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,red-warmer)))
+	      ("CR"    . (:background ,magenta :foreground ,bg-dim :weight 'bold :box (:line-width -1 :color ,bg-dim)))
+	      ("DONE"      . (:background ,green-warmer :foreground ,bg-dim :box (:line-width -1 :color ,green-warmer))) ; Typically not bold once fixed
 
 	      ;; Sequence 3
 	      ("CANCEL"     . (:background ,yellow-warmer :foreground ,bg-dim :strike-through t :box (:line-width -1 :color ,yellow-warmer)))
@@ -1745,7 +1745,8 @@ The exact color values are taken from the active Ef theme."
 	      ("HACK" . ,cyan)
 	      ("TEMP" . ,red)
 	      ("FIXME" . ,red-warmer)
-	      ("REVIEW" . ,red)
+	      ("CR" . ,yellow-warmer)
+	      ("BLOCKED" . ,RED)
 	      ("DEPRECATED" . ,yellow)))))
 
   (add-hook 'ef-themes-post-load-hook #'my-ef-themes-hl-todo-faces)
@@ -1848,7 +1849,7 @@ The exact color values are taken from the active Ef theme."
                         (?C :foreground "#81A1C1")))
   (org-todo-keywords
    '((sequence "TODO(t)" "NEXT(n)" "|" "DONE(d)")
-     (sequence "ISSUE(i)" "BUG(b)" "FEATURE(f)" "|" "FIXED(d)")
+     (sequence "QUEUE(i)" "DOING(b)" "CR(r)" "|" "DONE(d)")
      (sequence "|" "CANCEL(c)")))
   (org-image-actual-width '(400))
   (org-reveal-root "https://revealjs.com")
