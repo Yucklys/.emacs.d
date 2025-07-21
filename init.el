@@ -199,6 +199,7 @@
     :bind (("C-c q t" . 'amz-q-chat-toggle)
 	   ("C-c q q" . 'amz-q-chat-stop)
 	   ("C-c q r" . 'amz-q-chat-restart))
+    :hook (amz-q-chat-mode . (lambda () (setq-local display-line-numbers nil)))
     :custom
     (amz-q-chat-popup-side 'right))
   ;; (use-package amz-q-ide
@@ -423,19 +424,11 @@
     (orderless-matching-styles '(orderless-literal orderless-regexp)))
 
   ;; Configure a custom style dispatcher (see the Consult wiki)
-  ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
-  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq orderless-style-dispatchers '(orderless-affix-dispatch)
+	orderless-component-separator #'orderless-escapable-split-on-space)
   (setq completion-styles '(orderless basic)
-        completion-category-defaults nil
-        completion-category-overrides
-	'((file (styles . (basic partial-completion orderless)))
-          (bookmark (styles . (basic substring)))
-          (library (styles . (basic substring)))
-          (embark-keybinding (styles . (basic substring)))
-          (imenu (styles . (basic substring orderless)))
-          (consult-location (styles . (basic substring orderless)))
-          (kill-ring (styles . (emacs22 orderless)))
-          (eglot (styles . (emacs22 substring orderless)))))
+	completion-category-defaults nil
+	completion-category-overrides '((file (styles partial-completion))))
   )
 
 ;; Support Pinyin with pinyinlib
@@ -763,6 +756,7 @@
 	      ("C-c c a" . lsp-execute-code-action)
               ("C-c c r" . lsp-rename)
               ("C-c c f" . lsp-format-buffer)
+	      ("C-c c F" . lsp-format-region)
               ("C-c c d" . lsp-find-definition)
               ("C-c c D" . lsp-find-declaration)
               ("C-c c I" . lsp-find-implementation)
@@ -2121,99 +2115,7 @@ The exact color values are taken from the active Ef theme."
 
 ;; Use spaces instead tabs for indentation
 (add-hook 'java-ts-mode-hook (lambda () (setq indent-tabs-mode nil)))
-
-(use-package java-ts-mode
-  :config
-  (setq java-ts-mode--indent-rules
-	'((java ((parent-is "program") column-0 0)
-	       ((match "}" "element_value_array_initializer") parent-bol 0)
-	       ((node-is
-		 "\\`\\(?:array_initializer\\|block\\|c\\(?:\\(?:lass\\|onstructor\\)_body\\)\\|interface_body\\|switch_block\\)\\'")
-		parent-bol 0)
-	       ((node-is "}") standalone-parent 0)
-	       ((node-is ")") parent-bol 0) ((node-is "else") parent-bol 0)
-	       ((node-is "]") parent-bol 0)
-	       ((and (parent-is "comment") c-ts-common-looking-at-star)
-		c-ts-common-comment-start-after-first-star -1)
-	       ((parent-is "comment") prev-adaptive-prefix 0)
-	       ((parent-is "text_block") no-indent)
-	       ((parent-is "class_body") column-0 c-ts-common-statement-offset)
-	       ((parent-is "array_initializer") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "annotation_type_body") column-0
-		c-ts-common-statement-offset)
-	       ((parent-is "interface_body") column-0
-		c-ts-common-statement-offset)
-	       ((parent-is "constructor_body") standalone-parent
-		java-ts-mode-indent-offset)
-	       ((parent-is "enum_body_declarations") parent-bol 0)
-	       ((parent-is "enum_body") column-0 c-ts-common-statement-offset)
-	       ((parent-is "switch_block") standalone-parent
-		java-ts-mode-indent-offset)
-	       ((parent-is "record_declaration_body") column-0
-		c-ts-common-statement-offset)
-	       ((query "(method_declaration (block _ @indent))") parent-bol
-		java-ts-mode-indent-offset)
-	       ((query "(method_declaration (block (_) @indent))") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "local_variable_declaration") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "expression_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((match "type_identifier" "field_declaration") parent-bol 0)
-	       ((parent-is "field_declaration") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "return_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "variable_declarator") parent-bol
-		java-ts-mode-indent-offset)
-	       ((match ">" "type_arguments") parent-bol 0)
-	       ((parent-is "type_arguments") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "method_invocation") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "switch_rule") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "switch_label") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "ternary_expression") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "lambda_expression") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "element_value_array_initializer") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "function_definition") parent-bol 0)
-	       ((parent-is "conditional_expression") first-sibling 0)
-	       ((parent-is "assignment_expression") parent-bol 2)
-	       ((parent-is "binary_expression") parent 0)
-	       ((parent-is "parenthesized_expression") first-sibling 1)
-	       ((parent-is "argument_list") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "annotation_argument_list") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "modifiers") parent-bol 0)
-	       ((parent-is "formal_parameters") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "formal_parameter") parent-bol 0)
-	       ((parent-is "init_declarator") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "if_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "for_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "while_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "switch_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "case_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "labeled_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "do_statement") parent-bol
-		java-ts-mode-indent-offset)
-	       ((parent-is "block") standalone-parent
-		java-ts-mode-indent-offset))))
-  )
+(add-hook 'brazil-config-mode-hook (lambda () (setq indent-tabs-mode nil)))
 
 (use-package typescript-ts-mode
   :custom
